@@ -1,0 +1,1 @@
+# WildLink AI — Schemas Package
