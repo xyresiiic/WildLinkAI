@@ -62,18 +62,23 @@ function SimulationPanel({ project, priorityZones, onClose }) {
 
   const pollSimulation = async (simId) => {
     return new Promise((resolve) => {
+      let consecutiveErrors = 0;
       const poll = setInterval(async () => {
         try {
           const res = await getSimulation(simId);
           const sim = res.data.data;
+          consecutiveErrors = 0;
           if (sim.status === 'completed' || sim.status === 'failed') {
             clearInterval(poll);
             await loadScenarios();
             resolve();
           }
-        } catch {
-          clearInterval(poll);
-          resolve();
+        } catch (err) {
+          consecutiveErrors++;
+          if (consecutiveErrors > 15) {
+            clearInterval(poll);
+            resolve();
+          }
         }
       }, 1500);
     });

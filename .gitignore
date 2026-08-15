@@ -49,6 +49,11 @@ data/downloads/
 *.shx
 *.prj
 *.cpg
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 
 # Docker
 docker-compose.override.yml

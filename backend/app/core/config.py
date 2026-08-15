@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # Analysis defaults
     HABITAT_SUITABILITY_THRESHOLD: float = 0.5
-    DEFAULT_GRID_RESOLUTION: float = 0.01  # degrees (~1km)
+    DEFAULT_GRID_RESOLUTION: float = 0.025  # degrees (~2.5km) for optimal analysis performance
 
     # Priority weights (configurable)
     WEIGHT_HABITAT: float = 0.25

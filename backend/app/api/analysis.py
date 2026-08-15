@@ -58,7 +58,7 @@ async def trigger_analysis(
     )
 
     return success_response(
-        data=AnalysisJobResponse.model_validate(job).model_dump(),
+        data=AnalysisJobResponse.model_validate(job).model_dump(mode="json"),
         message=f"Analysis '{data.type}' queued for project"
     )
 
@@ -70,7 +70,7 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)):
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return success_response(data=AnalysisJobResponse.model_validate(job).model_dump())
+    return success_response(data=AnalysisJobResponse.model_validate(job).model_dump(mode="json"))
 
 
 @router.get("/habitat/{project_id}", response_model=None)

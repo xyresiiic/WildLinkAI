@@ -108,7 +108,7 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
         project.region_geometry = data.region_geojson
 
     db.add(project)
-    await db.flush()
+    await db.commit()
 
     # Eagerly load relationship for Pydantic validation
     res = await db.execute(
@@ -117,7 +117,7 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
     full_project = res.scalar_one()
 
     return success_response(
-        data=ProjectResponse.model_validate(full_project).model_dump(),
+        data=ProjectResponse.model_validate(full_project).model_dump(mode="json"),
         message="Project created"
     )
 
@@ -131,6 +131,7 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Project not found")
 
     await db.delete(project)
+    await db.commit()
     return success_response(message="Project deleted")
 
 
@@ -160,7 +161,7 @@ async def get_dashboard(project_id: str, db: AsyncSession = Depends(get_db)):
     critical_count = (await db.execute(
         select(func.count()).where(
             PriorityZone.project_id == project_id,
-            PriorityZone.priority_level == "critical"
+            PriorityZone.priority_level.in_(["critical", "high"])
         )
     )).scalar() or 0
 
@@ -193,4 +194,4 @@ async def get_dashboard(project_id: str, db: AsyncSession = Depends(get_db)):
         total_observations=obs_count,
     )
 
-    return success_response(data=stats.model_dump())
+    return success_response(data=stats.model_dump(mode="json"))

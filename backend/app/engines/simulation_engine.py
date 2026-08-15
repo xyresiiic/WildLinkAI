@@ -10,7 +10,6 @@ from typing import Dict, List, Optional
 from sqlalchemy import select, update
 from app.models.models import Simulation, Corridor, PriorityZone, HabitatZone
 from app.core.config import settings
-from geoalchemy2.shape import to_shape
 
 logger = logging.getLogger("wildlink.simulation")
 

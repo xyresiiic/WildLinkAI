@@ -22,6 +22,7 @@ function ConservationMap({ layers, onZoneClick }) {
       zoom={DEFAULT_ZOOM}
       style={{ width: '100%', height: '100%' }}
       zoomControl={true}
+      preferCanvas={true}
     >
       {/* Dark tile layer */}
       <TileLayer

@@ -1,9 +1,18 @@
 /**
  * WildLink AI — Header Component
  */
-import { TreePine, Activity, Wifi, WifiOff } from 'lucide-react';
+import { TreePine } from 'lucide-react';
 
 function Header({ project, species, analysisStatus }) {
+  const statusConfig = {
+    running: { label: 'Analyzing', dotClass: 'analyzing' },
+    completed: { label: 'Ready', dotClass: 'online' },
+    failed: { label: 'Failed', dotClass: 'offline' },
+    idle: { label: 'Idle', dotClass: 'offline' },
+  };
+
+  const { label, dotClass } = statusConfig[analysisStatus] || statusConfig.idle;
+
   return (
     <header className="app-header">
       <div className="logo">
@@ -34,32 +43,39 @@ function Header({ project, species, analysisStatus }) {
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          padding: '4px 10px',
+          padding: '5px 12px',
           borderRadius: 'var(--radius-full)',
           background: analysisStatus === 'running'
-            ? 'rgba(234, 179, 8, 0.15)'
+            ? 'rgba(234, 179, 8, 0.12)'
             : analysisStatus === 'completed'
-              ? 'rgba(34, 197, 94, 0.15)'
-              : 'rgba(107, 143, 124, 0.15)',
+              ? 'rgba(34, 197, 94, 0.12)'
+              : analysisStatus === 'failed'
+                ? 'rgba(239, 68, 68, 0.12)'
+                : 'rgba(107, 143, 124, 0.12)',
+          border: '1px solid',
+          borderColor: analysisStatus === 'running'
+            ? 'rgba(234, 179, 8, 0.2)'
+            : analysisStatus === 'completed'
+              ? 'rgba(34, 197, 94, 0.2)'
+              : analysisStatus === 'failed'
+                ? 'rgba(239, 68, 68, 0.2)'
+                : 'rgba(107, 143, 124, 0.15)',
           fontSize: '0.75rem',
           fontWeight: 500,
+          transition: 'all 0.25s ease',
         }}>
-          {analysisStatus === 'running' ? (
-            <>
-              <Activity size={12} style={{ color: '#eab308', animation: 'pulse 1.5s infinite' }} />
-              <span style={{ color: '#eab308' }}>Analyzing</span>
-            </>
-          ) : analysisStatus === 'completed' ? (
-            <>
-              <Wifi size={12} style={{ color: '#22c55e' }} />
-              <span style={{ color: '#22c55e' }}>Ready</span>
-            </>
-          ) : (
-            <>
-              <WifiOff size={12} style={{ color: 'var(--color-text-muted)' }} />
-              <span style={{ color: 'var(--color-text-muted)' }}>Idle</span>
-            </>
-          )}
+          <span className={`status-dot ${dotClass}`} />
+          <span style={{
+            color: analysisStatus === 'running'
+              ? '#eab308'
+              : analysisStatus === 'completed'
+                ? '#22c55e'
+                : analysisStatus === 'failed'
+                  ? '#f87171'
+                  : 'var(--color-text-muted)'
+          }}>
+            {label}
+          </span>
         </div>
       </div>
     </header>

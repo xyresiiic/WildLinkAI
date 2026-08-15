@@ -117,6 +117,7 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
 }
 
 .app-header {
@@ -129,6 +130,7 @@ body {
   padding: 0 var(--space-lg);
   backdrop-filter: blur(20px);
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .app-header .logo {
@@ -161,11 +163,13 @@ body {
   display: flex;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 /* ──────────────────────────── Sidebar ──────────────────────────── */
 .sidebar {
   width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
   background: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -177,6 +181,7 @@ body {
 
 .sidebar.collapsed {
   width: 60px;
+  min-width: 60px;
 }
 
 .sidebar-header {
@@ -190,9 +195,11 @@ body {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-md);
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scrollbar-color: var(--color-border-hover) transparent;
+  min-height: 0;
 }
 
 .sidebar-content::-webkit-scrollbar {
@@ -204,8 +211,16 @@ body {
 }
 
 .sidebar-content::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--color-border-hover);
   border-radius: var(--radius-full);
+}
+
+/* Sticky action footer inside sidebar */
+.sidebar-footer {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
 }
 
 /* ──────────────────────────── Map Container ──────────────────────────── */
@@ -536,10 +551,12 @@ body {
   letter-spacing: 0.04em;
 }
 
-.badge-critical { background: rgba(239, 68, 68, 0.15); color: var(--color-critical); }
-.badge-high { background: rgba(249, 115, 22, 0.15); color: var(--color-high); }
-.badge-medium { background: rgba(234, 179, 8, 0.15); color: var(--color-medium); }
-.badge-low { background: rgba(34, 197, 94, 0.15); color: var(--color-low); }
+.badge-critical { background: rgba(239, 68, 68, 0.15); color: var(--color-critical); border: 1px solid rgba(239,68,68,0.25); }
+.badge-high { background: rgba(249, 115, 22, 0.15); color: var(--color-high); border: 1px solid rgba(249,115,22,0.25); }
+.badge-medium { background: rgba(234, 179, 8, 0.15); color: var(--color-medium); border: 1px solid rgba(234,179,8,0.25); }
+.badge-low { background: rgba(34, 197, 94, 0.15); color: var(--color-low); border: 1px solid rgba(34,197,94,0.25); }
+.badge-vulnerable { background: rgba(249, 115, 22, 0.12); color: #fb923c; border: 1px solid rgba(249,115,22,0.2); }
+.badge-endangered { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
 
 .badge-evidence-high { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
 .badge-evidence-moderate { background: rgba(234, 179, 8, 0.15); color: #eab308; }
@@ -739,6 +756,7 @@ body {
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
+    min-width: 100%;
     position: absolute;
     z-index: 60;
     max-height: 50vh;
@@ -752,3 +770,102 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ──────────────────────────── Toast Notifications ──────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  max-width: 360px;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.3s ease-out;
+  pointer-events: auto;
+  border: 1px solid;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+
+.toast.exit {
+  animation: toastOut 0.25s ease-in forwards;
+}
+
+.toast-success {
+  background: rgba(22, 40, 30, 0.95);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+}
+
+.toast-error {
+  background: rgba(40, 15, 15, 0.95);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.toast-info {
+  background: rgba(15, 25, 40, 0.95);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+}
+
+.toast-warning {
+  background: rgba(40, 35, 10, 0.95);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #fbbf24;
+}
+
+/* ──────────────────────────── Loading Spinner ──────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ──────────────────────────── Connection status badge ──────────────────────────── */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.online { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+.status-dot.analyzing { background: #eab308; box-shadow: 0 0 6px rgba(234,179,8,0.5); animation: pulse 1.5s infinite; }
+.status-dot.offline { background: #6b8f7c; }

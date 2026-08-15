@@ -10,7 +10,6 @@ from typing import List, Dict
 from scipy import ndimage
 from shapely.geometry import box, MultiPolygon, mapping
 from shapely.ops import unary_union
-from geoalchemy2.shape import from_shape
 from sqlalchemy import select, update, delete
 from app.models.models import HabitatZone
 from app.core.config import settings

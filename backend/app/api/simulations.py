@@ -47,7 +47,7 @@ async def create_simulation(
     )
 
     return success_response(
-        data=SimulationResponse.model_validate(sim).model_dump(),
+        data=SimulationResponse.model_validate(sim).model_dump(mode="json"),
         message="Simulation queued"
     )
 
@@ -59,7 +59,7 @@ async def get_simulation(simulation_id: str, db: AsyncSession = Depends(get_db))
     sim = result.scalar_one_or_none()
     if not sim:
         raise HTTPException(status_code=404, detail="Simulation not found")
-    return success_response(data=SimulationResponse.model_validate(sim).model_dump())
+    return success_response(data=SimulationResponse.model_validate(sim).model_dump(mode="json"))
 
 
 @router.get("/project/{project_id}", response_model=None)
@@ -79,7 +79,7 @@ async def get_project_simulations(project_id: str, db: AsyncSession = Depends(ge
             baseline = sim.baseline_connectivity
             break
 
-    scenarios = [SimulationResponse.model_validate(s).model_dump() for s in simulations]
+    scenarios = [SimulationResponse.model_validate(s).model_dump(mode="json") for s in simulations]
 
     return success_response(data={
         "project_id": project_id,

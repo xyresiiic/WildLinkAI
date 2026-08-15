@@ -19,7 +19,7 @@ async def list_species(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Species).order_by(Species.common_name))
     species_list = result.scalars().all()
     return success_response(
-        data=[SpeciesResponse.model_validate(s).model_dump() for s in species_list],
+        data=[SpeciesResponse.model_validate(s).model_dump(mode="json") for s in species_list],
         message=f"Found {len(species_list)} species"
     )
 
@@ -31,7 +31,7 @@ async def get_species(species_id: str, db: AsyncSession = Depends(get_db)):
     species = result.scalar_one_or_none()
     if not species:
         raise HTTPException(status_code=404, detail="Species not found")
-    return success_response(data=SpeciesResponse.model_validate(species).model_dump())
+    return success_response(data=SpeciesResponse.model_validate(species).model_dump(mode="json"))
 
 
 @router.post("", response_model=None, status_code=201)
@@ -48,6 +48,6 @@ async def create_species(data: SpeciesCreate, db: AsyncSession = Depends(get_db)
     await db.flush()
     await db.refresh(species)
     return success_response(
-        data=SpeciesResponse.model_validate(species).model_dump(),
+        data=SpeciesResponse.model_validate(species).model_dump(mode="json"),
         message="Species created"
     )

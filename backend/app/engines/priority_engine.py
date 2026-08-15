@@ -10,6 +10,7 @@ from typing import Dict, List
 from sqlalchemy import select, delete, update, func
 from app.models.models import HabitatZone, Corridor, PriorityZone, Observation, EvidenceQuality
 from shapely.geometry import box, shape, mapping
+from app.core.config import settings
 
 logger = logging.getLogger("wildlink.priority")
 
@@ -79,11 +80,20 @@ class PriorityEngine:
         )
         corridors = corridor_result.scalars().all()
 
-        # Group zones into candidate regions
-        # Use a sampling approach: select representative zones along corridors
+        # Pre-parse zone geometries once to avoid millions of redundant shapely conversions
+        parsed_zones = []
+        for zone in zones:
+            try:
+                z_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
+                if z_shape:
+                    parsed_zones.append((zone, z_shape, z_shape.centroid))
+            except Exception:
+                continue
+
+        candidate_zone_ids = set()
         candidates = []
 
-        # Strategy 1: Zones near corridor endpoints (high connectivity potential)
+        # Strategy 1: Zones near corridor midpoints (high connectivity potential)
         for corridor in corridors:
             try:
                 corridor_shape = shape(corridor.geometry) if isinstance(corridor.geometry, dict) else None
@@ -91,15 +101,12 @@ class PriorityEngine:
                     continue
                 midpoint = corridor_shape.interpolate(0.5, normalized=True)
 
-                # Find nearby habitat zones
-                for zone in zones:
-                    zone_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
-                    if not zone_shape:
+                for zone, zone_shape, centroid in parsed_zones:
+                    if zone.id in candidate_zone_ids:
                         continue
-                    centroid = zone_shape.centroid
                     dist = midpoint.distance(centroid)
-
                     if dist < 0.1:  # Within ~11km
+                        candidate_zone_ids.add(zone.id)
                         candidates.append({
                             "zone": zone,
                             "geometry": zone_shape,
@@ -111,26 +118,16 @@ class PriorityEngine:
                 continue
 
         # Strategy 2: High-suitability zones that are fragmented
-        for zone in zones:
-            if zone.suitability_score >= 0.5 and zone.fragmentation_level in ("medium", "high"):
-                try:
-                    zone_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
-                    if not zone_shape:
-                        continue
-                    # Check if not already a candidate
-                    is_duplicate = any(
-                        c["zone"].id == zone.id for c in candidates
-                    )
-                    if not is_duplicate:
-                        candidates.append({
-                            "zone": zone,
-                            "geometry": zone_shape,
-                            "corridor_connectivity": 0,
-                            "corridor_resistance": 50,
-                            "near_corridor": False,
-                        })
-                except Exception:
-                    continue
+        for zone, zone_shape, centroid in parsed_zones:
+            if zone.id not in candidate_zone_ids and zone.suitability_score >= 0.5 and zone.fragmentation_level in ("medium", "high"):
+                candidate_zone_ids.add(zone.id)
+                candidates.append({
+                    "zone": zone,
+                    "geometry": zone_shape,
+                    "corridor_connectivity": 0,
+                    "corridor_resistance": 50,
+                    "near_corridor": False,
+                })
 
         # Limit to top candidates for MVP
         return candidates[:50]
