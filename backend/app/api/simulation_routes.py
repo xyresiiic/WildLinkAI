@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models import Simulation, Project, JobStatus
 from app.schemas import SimulationCreate, SimulationResponse, ScenarioComparison
 from app.utils import success_response
-from app.services import run_simulation
+from app.services.simulation_service import run_simulation
 
 router = APIRouter(prefix="/simulations", tags=["Simulations"])
 

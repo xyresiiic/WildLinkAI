@@ -18,7 +18,7 @@ from app.schemas import (
     ObservationResponse, GeoJSONFeatureCollection
 )
 from app.utils import success_response
-from app.services import run_full_analysis
+from app.services.analysis_service import run_full_analysis
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/analysis", tags=["Analysis"])

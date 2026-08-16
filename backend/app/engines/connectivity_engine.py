@@ -13,7 +13,7 @@ from scipy import ndimage
 from shapely.geometry import LineString, shape, mapping
 from sqlalchemy import select, delete
 from app.models import HabitatZone, Corridor
-from app.core import settings
+from app.config import settings
 
 logger = logging.getLogger("wildlink.connectivity")
 

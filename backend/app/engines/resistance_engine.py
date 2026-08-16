@@ -7,7 +7,7 @@ difficulty of wildlife movement through different landscape types.
 import logging
 import numpy as np
 from typing import Dict, List
-from app.core import settings
+from app.config import settings
 
 logger = logging.getLogger("wildlink.resistance")
 

@@ -228,17 +228,21 @@ erDiagram
 ### 3.2 Backend Codebase & File Organization
 | Module / Layer | File Location | Purpose & Responsibility |
 | :--- | :--- | :--- |
-| **ORM Data Models** | [conservation_models.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/models/conservation_models.py) | SQLAlchemy 2.0 ORM classes (`Species`, `Project`, `HabitatZone`, `Corridor`, `PriorityZone`, etc.) |
-| **Validation Schemas** | [conservation_schemas.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/schemas/conservation_schemas.py) | Pydantic v2 request/response validation contracts |
+| **ORM Data Models** | [models.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/models.py) | SQLAlchemy 2.0 ORM classes (`Species`, `Project`, `HabitatZone`, `Corridor`, `PriorityZone`, `Simulation`, etc.) |
+| **Validation Schemas** | [schemas.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/schemas.py) | Pydantic v2 request/response validation contracts |
+| **Database Sessions** | [database.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/database.py) | SQLite WAL mode, connection timeouts, and async engine pools |
+| **Configuration** | [config.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/config.py) | Application settings and environment variables |
+| **Security & Auth** | [security.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/security.py) | JWT authentication, hashing, and token verification |
+| **GIS Helpers** | [utils.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/utils.py) | GeoJSON serialization and API response packaging |
 | **Species Routes** | [species_routes.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/api/species_routes.py) | FastAPI endpoints for species discovery and ecological profiles |
 | **Project Routes** | [project_routes.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/api/project_routes.py) | Project CRUD, dashboard metrics aggregations, and GeoJSON bundle export |
 | **Analysis Routes** | [analysis_routes.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/api/analysis_routes.py) | Async GIS pipeline execution and layer retrieval |
 | **Simulation Routes** | [simulation_routes.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/api/simulation_routes.py) | What-If simulation management and scenario comparisons |
-| **GIS Helpers** | [geo_helpers.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/utils/geo_helpers.py) | GeoJSON serialization and API response packaging |
-| **Database Sessions** | [connection.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/database/connection.py) | SQLite WAL mode, connection timeouts, and async engine pools |
+| **Pipeline Service** | [analysis_service.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/services/analysis_service.py) | 5-stage background pipeline coordinator |
+| **Simulation Service**| [simulation_service.py](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/backend/app/services/simulation_service.py) | Counterfactual simulation scenario runner |
 
 ### 3.3 Database Engine Configuration
-- **File**: `backend/app/database/connection.py`
+- **File**: `backend/app/database.py`
 - **Driver**: `sqlite+aiosqlite` (Async) & `sqlite` (Sync fallback)
 - **Concurrency & WAL Settings**:
   - `PRAGMA journal_mode=WAL;` (Write-Ahead Logging for non-blocking concurrent reads).

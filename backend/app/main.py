@@ -5,10 +5,14 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core import settings
+from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
-from app.api import species_router, projects_router, analysis_router, simulations_router
+from app.api.species_routes import router as species_router
+from app.api.project_routes import router as projects_router
+from app.api.analysis_routes import router as analysis_router
+from app.api.simulation_routes import router as simulations_router
 from app.models import Species, Project, Observation, Dataset
+from app.security import hash_password
 
 # Configure logging
 logging.basicConfig(
@@ -90,7 +94,7 @@ async def _seed_demo_data():
     """Seed the database with comprehensive species across categories and sample observations."""
     from app.database import AsyncSessionLocal
     from app.models import User, Species, UserRole, Observation
-    from app.core import hash_password
+    from app.security import hash_password
     from sqlalchemy import select
     from datetime import datetime, timezone
     import numpy as np

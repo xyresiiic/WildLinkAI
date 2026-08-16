@@ -9,7 +9,7 @@ import numpy as np
 from typing import Dict, List, Optional
 from sqlalchemy import select, update
 from app.models import Simulation, Corridor, PriorityZone, HabitatZone
-from app.core import settings
+from app.config import settings
 
 logger = logging.getLogger("wildlink.simulation")
 

@@ -4,7 +4,7 @@ WildLink AI — Database Connection
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import create_engine
-from app.core.config import settings
+from app.config import settings
 
 
 from sqlalchemy import event
@@ -67,7 +67,7 @@ async def get_db() -> AsyncSession:
 
 async def init_db():
     """Create all tables on startup."""
-    import app.models.conservation_models  # noqa: F401
+    import app.models  # noqa: F401
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

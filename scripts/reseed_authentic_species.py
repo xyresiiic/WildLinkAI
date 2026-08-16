@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 from sqlalchemy import select, delete, update
 from app.database import AsyncSessionLocal
 from app.models import Species, Project, Observation, HabitatZone, Corridor, PriorityZone, Simulation, AnalysisJob, JobStatus
-from app.services import run_full_analysis
+from app.services.analysis_service import run_full_analysis
 from datetime import datetime, timezone
 
 SPECIES_DATA = [

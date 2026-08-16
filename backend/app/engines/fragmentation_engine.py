@@ -12,7 +12,7 @@ from shapely.geometry import box, MultiPolygon, mapping
 from shapely.ops import unary_union
 from sqlalchemy import select, update, delete
 from app.models import HabitatZone
-from app.core import settings
+from app.config import settings
 
 logger = logging.getLogger("wildlink.fragmentation")
 

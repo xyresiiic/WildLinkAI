@@ -11,7 +11,7 @@ from sqlalchemy import (
     ForeignKey, Boolean, JSON, Enum as SAEnum
 )
 from sqlalchemy.orm import relationship
-from app.database.connection import Base
+from app.database import Base
 import enum
 
 

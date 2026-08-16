@@ -11,13 +11,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 from sqlalchemy import select
 from app.database import AsyncSessionLocal
 from app.models import Species, Project
-from app.engines import (
-    HabitatEngine,
-    FragmentationEngine,
-    ResistanceEngine,
-    ConnectivityEngine,
-    PriorityEngine,
-)
+from app.engines.habitat_engine import HabitatEngine
+from app.engines.fragmentation_engine import FragmentationEngine
+from app.engines.resistance_engine import ResistanceEngine
+from app.engines.connectivity_engine import ConnectivityEngine
+from app.engines.priority_engine import PriorityEngine
 
 async def test_species(name="Snow Leopard"):
     async with AsyncSessionLocal() as db:

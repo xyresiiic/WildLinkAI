@@ -14,7 +14,7 @@ from sklearn.metrics import classification_report
 from shapely.geometry import Point, box, mapping
 from sqlalchemy import select, delete
 from app.models import HabitatZone, Observation, Project, Species
-from app.core import settings
+from app.config import settings
 
 logger = logging.getLogger("wildlink.habitat")
 

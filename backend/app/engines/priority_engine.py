@@ -10,7 +10,7 @@ from typing import Dict, List
 from sqlalchemy import select, delete, update, func
 from app.models import HabitatZone, Corridor, PriorityZone, Observation, EvidenceQuality
 from shapely.geometry import box, shape, mapping
-from app.core import settings
+from app.config import settings
 
 logger = logging.getLogger("wildlink.priority")
 
