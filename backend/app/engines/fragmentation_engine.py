@@ -45,12 +45,18 @@ class FragmentationEngine:
         # 2. Build suitability grid
         grid, grid_meta = self._build_grid(zones)
 
-        # 3. Threshold to binary
-        binary_grid = (grid >= self.threshold).astype(int)
+        # 3. Threshold to binary with adaptive thresholding
+        valid_scores = grid[grid > 0]
+        if len(valid_scores) > 0:
+            adaptive_thresh = max(0.25, min(self.threshold, float(np.percentile(valid_scores, 60))))
+        else:
+            adaptive_thresh = self.threshold
+
+        binary_grid = (grid >= adaptive_thresh).astype(int)
 
         # 4. Connected component analysis
         labeled_grid, num_patches = ndimage.label(binary_grid)
-        logger.info(f"Found {num_patches} habitat patches")
+        logger.info(f"Found {num_patches} habitat patches (threshold={adaptive_thresh:.2f})")
 
         # 5. Calculate patch metrics
         patch_metrics = self._calculate_patch_metrics(labeled_grid, grid, grid_meta, num_patches)

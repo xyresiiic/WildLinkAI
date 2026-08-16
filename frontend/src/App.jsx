@@ -232,15 +232,26 @@ function App() {
       setProjectsList(existingList);
       const existing = existingList.find(p => p.species_id === speciesId);
 
+      const SPECIES_REGIONS = {
+        'Bengal Tiger': 'Central Indian Highlands (Kanha–Bandhavgarh–Pench)',
+        'Snow Leopard': 'Western Himalayas (Ladakh & Spiti Valley)',
+        'Gharial': 'National Chambal River Sanctuary',
+        'Great Indian Bustard': 'Thar Desert & Semi-Arid Grasslands (Jaisalmer)',
+        'Indian Elephant': 'Western Ghats & Nilgiri Biosphere',
+        'Indian Leopard': 'Satpura & Aravalli Rocky Landscape',
+        'Sloth Bear': 'Daroji Sloth Bear Sanctuary & Deccan Plateau',
+      };
+
       let proj = null;
       if (existing) {
         proj = existing;
-        addToast(`Loaded existing project for ${sp?.common_name}`, 'success');
+        addToast(`Loaded project for ${sp?.common_name}`, 'success');
       } else {
+        const regionName = SPECIES_REGIONS[sp?.common_name] || 'Regional Wildlife Corridor';
         const res = await createProject({
           name: `${sp?.common_name || 'Wildlife'} Corridor Analysis`,
-          description: `Habitat connectivity analysis for ${sp?.common_name || 'target species'} in Central Indian Highlands`,
-          region_name: 'Central Indian Highlands',
+          description: `Habitat connectivity and least-cost corridor analysis for ${sp?.common_name || 'target species'} across ${regionName}.`,
+          region_name: regionName,
           species_id: speciesId,
         });
         proj = res.data.data;

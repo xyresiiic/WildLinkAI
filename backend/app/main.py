@@ -107,89 +107,140 @@ async def _seed_demo_data():
             )
             db.add(default_user)
 
-        # Comprehensive Species Dataset
+        # Comprehensive Authentic Indian Wildlife Species Dataset
         species_data = [
             {
                 "common_name": "Bengal Tiger",
                 "scientific_name": "Panthera tigris tigris",
-                "description": "Apex predator inhabiting contiguous forest tracts, riverine grasslands, and protected reserves across Central and Eastern India.",
+                "description": "Apex predator inhabiting contiguous deciduous forests, riverine grasslands, and protected reserves across the Central Indian Tiger Landscape.",
                 "conservation_status": "Endangered",
                 "habitat_preferences": {
                     "dense_forest": 0.95, "moist_deciduous_forest": 0.90, "dry_deciduous_forest": 0.80,
                     "grassland": 0.60, "scrubland": 0.40, "agriculture": 0.10, "settlement": 0.02, "water_body": 0.70,
                 },
-                "reserves": [(23.5, 80.5), (22.85, 80.6), (22.2, 78.1), (22.6, 77.7), (23.8, 80.8)]
-            },
-            {
-                "common_name": "Indian Elephant",
-                "scientific_name": "Elephas maximus indicus",
-                "description": "Megaherbivore requiring long-distance migration corridors connecting forest patches and perennial water sources.",
-                "conservation_status": "Endangered",
-                "habitat_preferences": {
-                    "dense_forest": 0.85, "moist_deciduous_forest": 0.90, "dry_deciduous_forest": 0.75,
-                    "grassland": 0.70, "scrubland": 0.50, "agriculture": 0.20, "settlement": 0.05, "water_body": 0.80,
-                },
-                "reserves": [(23.1, 81.2), (22.5, 82.4), (22.9, 80.8), (22.1, 79.5), (23.6, 80.4)]
-            },
-            {
-                "common_name": "Indian Leopard",
-                "scientific_name": "Panthera pardus fusca",
-                "description": "Highly adaptable carnivore ranging across forest buffers, rocky hills, and human-dominated agricultural fringes.",
-                "conservation_status": "Vulnerable",
-                "habitat_preferences": {
-                    "dense_forest": 0.90, "moist_deciduous_forest": 0.85, "dry_deciduous_forest": 0.80,
-                    "grassland": 0.50, "scrubland": 0.60, "agriculture": 0.30, "settlement": 0.15, "water_body": 0.50,
-                },
-                "reserves": [(23.3, 77.5), (22.4, 78.5), (23.8, 79.8), (22.7, 81.0), (23.0, 80.0)]
-            },
-            {
-                "common_name": "Sloth Bear",
-                "scientific_name": "Melursus ursinus",
-                "description": "Myrmecophagous bear species utilizing rocky terrain, dry deciduous forests, and termite-rich scrub habitats.",
-                "conservation_status": "Vulnerable",
-                "habitat_preferences": {
-                    "dense_forest": 0.80, "moist_deciduous_forest": 0.85, "dry_deciduous_forest": 0.90,
-                    "grassland": 0.40, "scrubland": 0.75, "agriculture": 0.15, "settlement": 0.05, "water_body": 0.60,
-                },
-                "reserves": [(24.2, 81.2), (23.3, 85.3), (22.2, 81.5), (23.5, 80.1), (22.8, 78.9)]
-            },
-            {
-                "common_name": "Great Indian Bustard",
-                "scientific_name": "Ardeotis nigriceps",
-                "description": "Critically endangered flagship grassland bird restricted to semi-arid open plains and non-intensive agriculture.",
-                "conservation_status": "Critically Endangered",
-                "habitat_preferences": {
-                    "dense_forest": 0.05, "moist_deciduous_forest": 0.10, "dry_deciduous_forest": 0.20,
-                    "grassland": 0.95, "scrubland": 0.85, "agriculture": 0.40, "settlement": 0.02, "water_body": 0.30,
-                },
-                "reserves": [(23.5, 80.2), (23.8, 79.5), (22.9, 78.8), (23.1, 80.9), (22.5, 79.8)]
-            },
-            {
-                "common_name": "Gharial",
-                "scientific_name": "Gavialis gangeticus",
-                "description": "Critically endangered fish-eating crocodilian specialized in high-integrity river channels and undisturbed sandbanks.",
-                "conservation_status": "Critically Endangered",
-                "habitat_preferences": {
-                    "dense_forest": 0.20, "moist_deciduous_forest": 0.30, "dry_deciduous_forest": 0.20,
-                    "grassland": 0.30, "scrubland": 0.10, "agriculture": 0.05, "settlement": 0.01, "water_body": 0.98,
-                },
-                "reserves": [(23.6, 80.9), (23.1, 80.4), (22.7, 78.4), (23.9, 80.7), (22.3, 79.2)]
+                "region_name": "Central Indian Highlands (Kanha–Bandhavgarh–Pench)",
+                "reserves": [
+                    (22.33, 80.62),  # Kanha Tiger Reserve
+                    (23.70, 81.03),  # Bandhavgarh Tiger Reserve
+                    (21.75, 79.35),  # Pench Tiger Reserve
+                    (24.62, 80.05),  # Panna Tiger Reserve
+                    (22.45, 78.43),  # Satpura Tiger Reserve
+                ],
             },
             {
                 "common_name": "Snow Leopard",
                 "scientific_name": "Panthera uncia",
-                "description": "Elusive alpine cat inhabiting high-altitude rocky bluffs, mountain ridges, and alpine pastures.",
+                "description": "Elusive alpine predator specialized in steep glaciated cliffs, alpine scree, and cold desert ridgelines of the high Himalayas.",
                 "conservation_status": "Vulnerable",
                 "habitat_preferences": {
-                    "dense_forest": 0.20, "moist_deciduous_forest": 0.10, "dry_deciduous_forest": 0.10,
-                    "grassland": 0.80, "scrubland": 0.90, "agriculture": 0.05, "settlement": 0.01, "water_body": 0.40,
+                    "dense_forest": 0.05, "moist_deciduous_forest": 0.05, "dry_deciduous_forest": 0.05,
+                    "grassland": 0.80, "scrubland": 0.95, "agriculture": 0.02, "settlement": 0.01, "water_body": 0.40,
                 },
-                "reserves": [(24.1, 80.5), (23.7, 81.1), (23.4, 79.2), (23.9, 80.1), (22.8, 80.9)]
+                "region_name": "Western Himalayas (Ladakh & Spiti Valley)",
+                "reserves": [
+                    (33.95, 77.45),  # Hemis National Park, Ladakh
+                    (32.33, 78.01),  # Kibber Wildlife Sanctuary, Spiti
+                    (31.95, 77.85),  # Pin Valley National Park, HP
+                    (33.50, 78.50),  # Changthang Alpine Plateau, Ladakh
+                    (34.10, 76.80),  # Zanskar Mountain Range
+                ],
+            },
+            {
+                "common_name": "Gharial",
+                "scientific_name": "Gavialis gangeticus",
+                "description": "Critically endangered crocodilian strictly adapted to deep freshwater river channels and undisturbed nesting sandbanks.",
+                "conservation_status": "Critically Endangered",
+                "habitat_preferences": {
+                    "dense_forest": 0.10, "moist_deciduous_forest": 0.20, "dry_deciduous_forest": 0.10,
+                    "grassland": 0.30, "scrubland": 0.10, "agriculture": 0.05, "settlement": 0.01, "water_body": 0.98,
+                },
+                "region_name": "National Chambal River Sanctuary",
+                "reserves": [
+                    (26.65, 77.90),  # Chambal River - Morena/Dholpur
+                    (26.78, 78.85),  # Chambal River - Bhind
+                    (26.45, 77.35),  # Chambal River - Sheopur
+                    (25.95, 76.75),  # Chambal-Sawai Madhopur Confluence
+                    (26.78, 79.03),  # Yamuna-Chambal Confluence (Etawah)
+                ],
+            },
+            {
+                "common_name": "Great Indian Bustard",
+                "scientific_name": "Ardeotis nigriceps",
+                "description": "Critically endangered flagship avian of open arid grasslands and semi-desert scrub plains in western Rajasthan.",
+                "conservation_status": "Critically Endangered",
+                "habitat_preferences": {
+                    "dense_forest": 0.02, "moist_deciduous_forest": 0.05, "dry_deciduous_forest": 0.10,
+                    "grassland": 0.98, "scrubland": 0.90, "agriculture": 0.35, "settlement": 0.01, "water_body": 0.20,
+                },
+                "region_name": "Thar Desert & Semi-Arid Grasslands (Jaisalmer)",
+                "reserves": [
+                    (26.85, 70.55),  # Desert National Park, Jaisalmer
+                    (26.82, 70.48),  # Sam Grassland Enclosure
+                    (26.75, 70.60),  # Sudasari Bustard Core Area
+                    (27.02, 71.95),  # Ramdevra Grassland Plains
+                    (26.92, 71.90),  # Pokhran Semi-Arid Scrub
+                ],
+            },
+            {
+                "common_name": "Indian Elephant",
+                "scientific_name": "Elephas maximus indicus",
+                "description": "Megaherbivore requiring contiguous tropical moist forests, bamboo groves, and perennial water corridors across the Western Ghats.",
+                "conservation_status": "Endangered",
+                "habitat_preferences": {
+                    "dense_forest": 0.90, "moist_deciduous_forest": 0.95, "dry_deciduous_forest": 0.75,
+                    "grassland": 0.70, "scrubland": 0.50, "agriculture": 0.20, "settlement": 0.02, "water_body": 0.85,
+                },
+                "region_name": "Western Ghats & Nilgiri Biosphere",
+                "reserves": [
+                    (11.66, 76.62),  # Bandipur Tiger Reserve & Elephant Corridor
+                    (11.95, 76.25),  # Nagarhole National Park & Kabini Basin
+                    (11.70, 76.35),  # Wayanad Wildlife Sanctuary
+                    (11.58, 76.55),  # Mudumalai Tiger Reserve
+                    (11.60, 77.10),  # Sathyamangalam Elephant Corridor
+                ],
+            },
+            {
+                "common_name": "Indian Leopard",
+                "scientific_name": "Panthera pardus fusca",
+                "description": "Adaptable feline predator ranging through rocky hill systems, scrub forests, and forest-agriculture transition buffers.",
+                "conservation_status": "Vulnerable",
+                "habitat_preferences": {
+                    "dense_forest": 0.85, "moist_deciduous_forest": 0.80, "dry_deciduous_forest": 0.85,
+                    "grassland": 0.50, "scrubland": 0.70, "agriculture": 0.30, "settlement": 0.15, "water_body": 0.50,
+                },
+                "region_name": "Satpura & Aravalli Rocky Landscape",
+                "reserves": [
+                    (25.10, 73.15),  # Jawai Leopard Hills, Rajasthan
+                    (22.55, 77.95),  # Satpura Foothills & Gorge
+                    (25.15, 73.58),  # Kumbhalgarh Wildlife Sanctuary
+                    (25.65, 77.15),  # Kuno Wildlife Corridor
+                    (21.45, 77.15),  # Melghat Forest Buffer
+                ],
+            },
+            {
+                "common_name": "Sloth Bear",
+                "scientific_name": "Melursus ursinus",
+                "description": "Specialized myrmecophage inhabiting boulder-strewn hills, dry deciduous forest caves, and termite-rich scrublands.",
+                "conservation_status": "Vulnerable",
+                "habitat_preferences": {
+                    "dense_forest": 0.75, "moist_deciduous_forest": 0.80, "dry_deciduous_forest": 0.90,
+                    "grassland": 0.40, "scrubland": 0.85, "agriculture": 0.15, "settlement": 0.05, "water_body": 0.55,
+                },
+                "region_name": "Daroji Sloth Bear Sanctuary & Deccan Plateau",
+                "reserves": [
+                    (15.25, 76.60),  # Daroji Sloth Bear Sanctuary, Hampi
+                    (14.88, 76.65),  # Gudekote Sloth Bear Sanctuary
+                    (15.35, 76.45),  # Tungabhadra River Scrub Range
+                    (22.48, 78.02),  # Bori Sanctuary, Satpura
+                    (24.45, 72.45),  # Jessore Sloth Bear Sanctuary
+                ],
             }
         ]
 
+        from sqlalchemy import delete
         for sp_data in species_data:
             reserves = sp_data.pop("reserves")
+            region_name = sp_data.pop("region_name", None)
             res = await db.execute(select(Species).where(Species.scientific_name == sp_data["scientific_name"]))
             existing_sp = res.scalar_one_or_none()
 
@@ -198,26 +249,43 @@ async def _seed_demo_data():
                 db.add(existing_sp)
                 await db.flush()
                 logger.info(f"➕ Added species: {existing_sp.common_name}")
+            else:
+                existing_sp.description = sp_data["description"]
+                existing_sp.habitat_preferences = sp_data["habitat_preferences"]
+                existing_sp.conservation_status = sp_data["conservation_status"]
 
-            # Check if observations exist for this species
-            obs_res = await db.execute(select(Observation).where(Observation.species_id == existing_sp.id).limit(1))
-            if not obs_res.scalar_one_or_none():
+            # Refresh observations to ensure authentic regional coordinates
+            first_reserve_lat = reserves[0][0]
+            first_reserve_lng = reserves[0][1]
+            existing_obs = await db.execute(
+                select(Observation).where(Observation.species_id == existing_sp.id).limit(1)
+            )
+            obs_sample = existing_obs.scalar_one_or_none()
+            needs_obs_refresh = (
+                obs_sample is None or
+                abs(obs_sample.latitude - first_reserve_lat) > 4.0 or
+                abs(obs_sample.longitude - first_reserve_lng) > 4.0
+            )
+
+            if needs_obs_refresh:
+                await db.execute(delete(Observation).where(Observation.species_id == existing_sp.id))
                 for rlat, rlng in reserves:
                     for _ in range(10):
-                        lat = float(rlat + np.random.normal(0, 0.08))
-                        lng = float(rlng + np.random.normal(0, 0.08))
+                        lat = float(rlat + np.random.normal(0, 0.06))
+                        lng = float(rlng + np.random.normal(0, 0.06))
                         obs = Observation(
                             species_id=existing_sp.id,
                             latitude=lat,
                             longitude=lng,
                             location={"type": "Point", "coordinates": [lng, lat]},
-                            source="GBIF / WII Field Survey",
-                            confidence=float(np.random.uniform(0.78, 0.99)),
+                            source="WII / State Forest Dept Field Survey",
+                            confidence=float(np.random.uniform(0.82, 0.99)),
                             observed_at=datetime.now(timezone.utc),
                         )
                         db.add(obs)
-                logger.info(f"📍 Seeded 50 observations for {existing_sp.common_name}")
+                logger.info(f"📍 Updated observations for {existing_sp.common_name} in {region_name}")
 
         await db.commit()
-        logger.info("✅ Comprehensive multi-species demo dataset ready!")
+        logger.info("✅ Authentic multi-species regional dataset loaded!")
+
 

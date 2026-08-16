@@ -166,20 +166,20 @@ class HabitatEngine:
             # Feature 2: Land cover suitability tailored for species
             features["landcover_suitability"] = self._simulate_landcover(cell, species)
 
-            # Feature 3: Water proximity
-            features["water_proximity"] = self._simulate_water_proximity(cell)
+            # Feature 3: Water proximity tailored to species ecology
+            features["water_proximity"] = self._simulate_water_proximity(cell, species, obs_points)
 
             # Feature 4: Elevation suitability
             features["elevation_suitability"] = self._simulate_elevation(cell, species)
 
             # Feature 5: Human disturbance
-            features["human_disturbance"] = self._simulate_human_disturbance(cell)
+            features["human_disturbance"] = self._simulate_human_disturbance(cell, species)
 
             # Feature 6: Protected area bonus
-            features["protected_area"] = self._simulate_protected_area(cell)
+            features["protected_area"] = self._simulate_protected_area(cell, species, obs_points)
 
             # Feature 7: Road density
-            features["road_density"] = self._simulate_road_density(cell)
+            features["road_density"] = self._simulate_road_density(cell, species)
 
             cell_with_features = {**cell, "features": features}
             featured_cells.append(cell_with_features)
@@ -191,41 +191,34 @@ class HabitatEngine:
         prefs = (species.habitat_preferences if species and species.habitat_preferences else {})
 
         # Dynamic weights based on species ecology
-        water_weight = 0.35 if prefs.get("water_body", 0.5) > 0.8 else 0.10
+        water_weight = 0.40 if prefs.get("water_body", 0.5) > 0.8 else 0.10
         grassland_pref = prefs.get("grassland", 0.5) + prefs.get("scrubland", 0.5)
         landcover_weight = 0.30 if grassland_pref > 1.2 else 0.25
-        elevation_weight = 0.20 if prefs.get("scrubland", 0.4) > 0.8 and prefs.get("dense_forest", 0.5) < 0.3 else 0.10
+        elevation_weight = 0.25 if (prefs.get("scrubland", 0.4) > 0.8 and prefs.get("dense_forest", 0.5) < 0.2) else 0.10
         obs_weight = 0.20
         pa_weight = 0.12
         disturbance_weight = -0.15 if prefs.get("settlement", 0.1) < 0.05 else -0.08
-        road_weight = -0.08
 
-        total_pos = obs_weight + landcover_weight + water_weight + elevation_weight + pa_weight
+        total_pos = obs_weight + 0.08 + landcover_weight + water_weight + elevation_weight + pa_weight
         norm_factor = 1.0 / max(0.5, total_pos)
 
-        scored_cells = []
         for cell in cells:
             f = cell["features"]
+            raw_score = (
+                obs_weight * f["observation_proximity"]
+                + 0.08 * f["observation_density"]
+                + landcover_weight * f["landcover_suitability"]
+                + water_weight * f["water_proximity"]
+                + elevation_weight * f["elevation_suitability"]
+                + pa_weight * f["protected_area"]
+                + disturbance_weight * f["human_disturbance"]
+                - 0.05 * f["road_density"]
+            )
+            # Normalized suitability with slight scaling for distinct high-quality core clusters
+            score = max(0.08, min(0.98, raw_score * norm_factor * 1.3))
+            cell["suitability_score"] = float(round(score, 4))
 
-            score = (
-                obs_weight * f.get("observation_proximity", 0.0)
-                + 0.08 * f.get("observation_density", 0.0)
-                + landcover_weight * f.get("landcover_suitability", 0.0)
-                + water_weight * f.get("water_proximity", 0.0)
-                + elevation_weight * f.get("elevation_suitability", 0.0)
-                + pa_weight * f.get("protected_area", 0.0)
-                + disturbance_weight * f.get("human_disturbance", 0.0)
-                + road_weight * f.get("road_density", 0.0)
-            ) * norm_factor
-
-            score = max(0.02, min(1.0, score))
-            noise = np.random.normal(0, 0.02)
-            score = max(0.01, min(1.0, score + noise))
-
-            cell["suitability"] = round(float(score), 4)
-            scored_cells.append(cell)
-
-        return scored_cells
+        return cells
 
     async def _store_results(self, cells: List[dict]):
         """Store habitat zones in the database."""
@@ -236,7 +229,7 @@ class HabitatEngine:
 
         # Only store cells with meaningful suitability (> threshold)
         threshold = settings.HABITAT_SUITABILITY_THRESHOLD * 0.7  # Store significant habitat zones
-        filtered = [c for c in cells if c["suitability"] >= threshold]
+        filtered = [c for c in cells if c["suitability_score"] >= threshold]
 
         zones_to_add = []
         for cell in filtered:
@@ -246,10 +239,10 @@ class HabitatEngine:
             zone = HabitatZone(
                 project_id=self.project_id,
                 geometry=mapping(polygon),
-                suitability_score=cell["suitability"],
+                suitability_score=cell["suitability_score"],
                 area_hectares=round(area_ha, 2),
                 patch_id=cell["id"],
-                fragmentation_level=self._classify_fragmentation(cell["suitability"]),
+                fragmentation_level=self._classify_fragmentation(cell["suitability_score"]),
                 metadata_=cell.get("features"),
             )
             zones_to_add.append(zone)
@@ -258,95 +251,151 @@ class HabitatEngine:
         await self.db.flush()
 
     # ──────────────── Simulated Feature Functions ────────────────
-    # These simulate environmental data for the demo.
-    # In production, they'd read from actual raster datasets.
 
     def _simulate_landcover(self, cell: dict, species=None) -> float:
         """Simulate land cover suitability based on species preferences and spatial patterns."""
         lat, lng = cell["lat"], cell["lng"]
         prefs = species.habitat_preferences if species and species.habitat_preferences else {}
 
-        # Forest pattern
-        forest_pattern = (
+        # Spatial vegetative heterogeneity
+        veg_pattern = (
             0.5 + 0.3 * np.sin(lat * 8) * np.cos(lng * 6)
             + 0.2 * np.sin((lat + lng) * 12)
         )
-        forest_pattern = max(0.0, min(1.0, forest_pattern))
+        veg_pattern = max(0.0, min(1.0, veg_pattern))
+        open_pattern = 1.0 - veg_pattern
 
-        # Grassland/scrubland pattern (open terrain)
-        open_pattern = 1.0 - forest_pattern
-
-        # Weight patterns by species preference
         forest_pref = (prefs.get("dense_forest", 0.5) + prefs.get("moist_deciduous_forest", 0.5)) / 2.0
         open_pref = (prefs.get("grassland", 0.5) + prefs.get("scrubland", 0.5)) / 2.0
 
         if open_pref > forest_pref:
-            suitability = open_pattern * 0.7 + forest_pattern * 0.3
+            suitability = open_pattern * 0.75 + veg_pattern * 0.25
         else:
-            suitability = forest_pattern * 0.75 + open_pattern * 0.25
+            suitability = veg_pattern * 0.75 + open_pattern * 0.25
 
-        return max(0.0, min(1.0, suitability))
+        return max(0.05, min(1.0, suitability))
 
-    def _simulate_water_proximity(self, cell: dict) -> float:
-        """Simulate proximity to water bodies."""
+    def _simulate_water_proximity(self, cell: dict, species=None, obs_points=None) -> float:
+        """Simulate proximity to water bodies tailored to species ecology and regional river systems."""
         lat, lng = cell["lat"], cell["lng"]
-        # Simulate river corridors
+        prefs = species.habitat_preferences if species and species.habitat_preferences else {}
+        is_aquatic = prefs.get("water_body", 0.5) > 0.8
+
+        if is_aquatic:
+            # For Gharial (Chambal River Basin lat 25.5..27.5, lng 76.5..79.5):
+            # Chambal river meanders from SW (Sawai Madhopur 25.9, 76.7) to NE (Etawah 26.8, 79.0)
+            chambal_line_dist = abs((lat - 25.9) - (lng - 76.7) * 0.40)
+            river_proximity = np.exp(-(chambal_line_dist ** 2) / 0.08)
+            return float(min(1.0, max(0.2, river_proximity * 1.1)))
+
+        if lat > 30.0:
+            # Himalayan snow and glacial streams (Indus, Spiti, Zanskar)
+            river_proximity = max(
+                np.exp(-((lat - 34.15) ** 2 + (lng - 77.58) ** 2) / 0.5),  # Indus
+                np.exp(-((lat - 32.25) ** 2 + (lng - 78.05) ** 2) / 0.3),  # Spiti
+            )
+            return float(min(1.0, river_proximity * 0.8 + 0.25))
+
+        if lat < 15.0:
+            # Western Ghats river systems (Kabini, Moyar, Bhavani)
+            river_proximity = max(
+                np.exp(-((lat - 11.95) ** 2 + (lng - 76.25) ** 2) / 0.2),  # Kabini
+                np.exp(-((lat - 11.58) ** 2 + (lng - 76.85) ** 2) / 0.2),  # Moyar
+            )
+            return float(min(1.0, river_proximity * 0.85 + 0.3))
+
+        # Central India river corridors (Narmada, Ken, Betwa, Son)
         river_proximity = max(
             0.8 * np.exp(-((lat - 23.5) ** 2) / 0.1),
             0.7 * np.exp(-((lng - 80.0) ** 2) / 0.2),
             0.6 * np.exp(-((lat - 24.0 + (lng - 80.0) * 0.3) ** 2) / 0.05),
         )
-        return min(1.0, river_proximity + 0.2)
+        return float(min(1.0, river_proximity + 0.2))
 
     def _simulate_elevation(self, cell: dict, species=None) -> float:
         """Simulate elevation suitability based on species habitat needs."""
         lat, lng = cell["lat"], cell["lng"]
         prefs = species.habitat_preferences if species and species.habitat_preferences else {}
+
+        # Western Himalayas (Snow Leopard: Ladakh / Spiti high altitude 3500m-5500m)
+        if lat > 30.0:
+            # High elevation alpine ridges have highest suitability
+            mountain_ridge = 0.5 + 0.4 * np.sin(lat * 6) * np.cos(lng * 4) + 0.2 * np.sin((lat + lng) * 8)
+            return float(max(0.3, min(1.0, 0.4 + 0.6 * mountain_ridge)))
+
+        # Desert / Grassland (Great Indian Bustard: flat semi-arid steppes)
+        if (prefs.get("grassland", 0.5) > 0.8 and prefs.get("dense_forest", 0.5) < 0.1):
+            flatness = 1.0 - 0.3 * abs(np.sin(lat * 4) * np.cos(lng * 4))
+            return float(max(0.4, min(1.0, flatness)))
+
+        # Aquatic (Gharial: low-elevation river channels and sandbars)
+        if prefs.get("water_body", 0.5) > 0.8:
+            return float(0.85)
+
+        # Standard forest / hill terrain
         elev = 0.5 + 0.4 * np.sin(lat * 5) * np.cos(lng * 3)
-        elev = max(0.0, min(1.0, elev))
+        return float(max(0.2, min(1.0, elev)))
 
-        # Alpine/mountain species (e.g. Snow Leopard) favor higher elevation terrain
-        if prefs.get("scrubland", 0.5) > 0.8 and prefs.get("dense_forest", 0.5) < 0.3:
-            return 0.4 + 0.6 * elev
-        return max(0.2, min(1.0, elev))
-
-    def _simulate_human_disturbance(self, cell: dict) -> float:
-        """Simulate human disturbance (higher near towns/roads)."""
+    def _simulate_human_disturbance(self, cell: dict, species=None) -> float:
+        """Simulate human disturbance based on authentic regional towns and transport hubs."""
         lat, lng = cell["lat"], cell["lng"]
-        # Simulate urban centers
+
+        if lat > 30.0:
+            # Himalayas: Leh & Kaza
+            leh = np.exp(-((lat - 34.15) ** 2 + (lng - 77.58) ** 2) / 0.08)
+            kaza = np.exp(-((lat - 32.22) ** 2 + (lng - 78.07) ** 2) / 0.05)
+            disturbance = 0.05 + 0.6 * max(leh, kaza)
+            return float(min(1.0, disturbance))
+
+        if lat < 15.0:
+            # Western Ghats: Mysore, Gudalur, Ooty
+            mysore = np.exp(-((lat - 12.30) ** 2 + (lng - 76.64) ** 2) / 0.1)
+            ooty = np.exp(-((lat - 11.41) ** 2 + (lng - 76.70) ** 2) / 0.08)
+            disturbance = 0.10 + 0.6 * max(mysore, ooty)
+            return float(min(1.0, disturbance))
+
+        if (lng < 73.0 and lat > 25.0):
+            # Thar Desert: Jaisalmer, Pokhran, Barmer
+            jaisalmer = np.exp(-((lat - 26.91) ** 2 + (lng - 70.91) ** 2) / 0.08)
+            pokhran = np.exp(-((lat - 26.92) ** 2 + (lng - 71.92) ** 2) / 0.06)
+            disturbance = 0.08 + 0.55 * max(jaisalmer, pokhran)
+            return float(min(1.0, disturbance))
+
+        if (lat > 25.5 and lat < 28.0 and lng > 76.5):
+            # Chambal / Yamuna Basin: Morena, Dholpur, Agra, Etawah
+            morena = np.exp(-((lat - 26.50) ** 2 + (lng - 78.00) ** 2) / 0.08)
+            dholpur = np.exp(-((lat - 26.70) ** 2 + (lng - 77.90) ** 2) / 0.08)
+            etawah = np.exp(-((lat - 26.78) ** 2 + (lng - 79.03) ** 2) / 0.08)
+            disturbance = 0.12 + 0.55 * max(morena, dholpur, etawah)
+            return float(min(1.0, disturbance))
+
+        # Central India: Jabalpur, Nagpur, Bhopal
         jabalpur = np.exp(-((lat - 23.18) ** 2 + (lng - 79.95) ** 2) / 0.1)
         nagpur = np.exp(-((lat - 21.15) ** 2 + (lng - 79.09) ** 2) / 0.15)
         bhopal = np.exp(-((lat - 23.26) ** 2 + (lng - 77.41) ** 2) / 0.15)
+        disturbance = 0.12 + 0.5 * max(jabalpur, nagpur, bhopal)
+        return float(min(1.0, disturbance))
 
-        disturbance = 0.15 + 0.5 * max(jabalpur, nagpur, bhopal)
-        return min(1.0, disturbance)
-
-    def _simulate_protected_area(self, cell: dict) -> float:
-        """Simulate protected area presence."""
+    def _simulate_protected_area(self, cell: dict, species=None, obs_points=None) -> float:
+        """Simulate protected area presence from observation clusters and known sanctuaries."""
         lat, lng = cell["lat"], cell["lng"]
-        # Approximate locations of major tiger reserves / national parks
-        reserves = [
-            (23.5, 80.5, 0.3),    # Panna
-            (22.85, 80.6, 0.25),  # Kanha
-            (22.2, 78.1, 0.2),    # Pench
-            (22.6, 77.7, 0.2),    # Satpura
-            (23.8, 80.8, 0.15),   # Bandhavgarh
-        ]
 
-        max_pa = 0.0
-        for rlat, rlng, radius in reserves:
-            dist = np.sqrt((lat - rlat) ** 2 + (lng - rlng) ** 2)
-            if dist < radius:
-                max_pa = max(max_pa, 1.0 - dist / radius)
+        # Universal: Proximity to core observation clusters acts as protected core
+        if obs_points is not None and len(obs_points) > 0:
+            cell_pt = np.array([lat, lng])
+            dists = np.sqrt(np.sum((obs_points - cell_pt) ** 2, axis=1))
+            min_dist = np.min(dists)
+            if min_dist < 0.25:
+                return float(1.0 - min_dist / 0.25)
 
-        return max_pa
+        return 0.0
 
-    def _simulate_road_density(self, cell: dict) -> float:
-        """Simulate road density."""
+    def _simulate_road_density(self, cell: dict, species=None) -> float:
+        """Simulate road density across regions."""
         lat, lng = cell["lat"], cell["lng"]
-        # Higher near highway corridors
-        highway = 0.3 + 0.3 * np.exp(-abs(lat - 23.0) / 0.5)
-        return min(1.0, highway)
+        # Regional highway corridor approximation
+        highway = 0.2 + 0.25 * np.exp(-abs(np.sin(lat * 3) + np.cos(lng * 2)) / 0.4)
+        return float(min(1.0, highway))
 
     def _estimate_area_hectares(self, cell: dict) -> float:
         """Estimate cell area in hectares (rough approximation)."""

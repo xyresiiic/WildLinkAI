@@ -79,78 +79,79 @@ class ConnectivityEngine:
             select(HabitatZone)
             .where(
                 HabitatZone.project_id == self.project_id,
-                HabitatZone.suitability_score >= settings.HABITAT_SUITABILITY_THRESHOLD
+                HabitatZone.suitability_score >= 0.25
             )
         )
         zones = result.scalars().all()
+        if not zones:
+            return []
 
         # Group by patch_id and compute centroids
         patch_groups = {}
         for zone in zones:
-            pid = zone.patch_id or 0
+            pid = zone.patch_id if (zone.patch_id is not None and zone.patch_id > 0) else 1
             if pid not in patch_groups:
                 patch_groups[pid] = {
                     "patch_id": pid,
                     "zones": [],
                     "suitability_scores": [],
+                    "lats": [],
+                    "lngs": [],
                 }
             patch_groups[pid]["zones"].append(zone)
             patch_groups[pid]["suitability_scores"].append(zone.suitability_score)
 
+            # Fast polygon center from coordinates
+            try:
+                coords = zone.geometry.get("coordinates", [])[0]
+                clng = (coords[0][0] + coords[2][0]) / 2.0
+                clat = (coords[0][1] + coords[2][1]) / 2.0
+                patch_groups[pid]["lats"].append(clat)
+                patch_groups[pid]["lngs"].append(clng)
+            except Exception:
+                pass
+
         patches = []
-
         for pid, group in patch_groups.items():
-            if len(group["zones"]) < 3:
-                continue  # Skip very small patches in primary pass
-
-            lats, lngs = [], []
-            for zone in group["zones"]:
-                try:
-                    geom_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
-                    if geom_shape:
-                        centroid = geom_shape.centroid
-                        lats.append(centroid.y)
-                        lngs.append(centroid.x)
-                except Exception:
-                    pass
-
-            if not lats:
+            if not group["lats"]:
                 continue
-
             patches.append({
                 "patch_id": pid,
-                "centroid_lat": float(np.mean(lats)),
-                "centroid_lng": float(np.mean(lngs)),
+                "centroid_lat": float(np.mean(group["lats"])),
+                "centroid_lng": float(np.mean(group["lngs"])),
                 "area_hectares": float(sum(z.area_hectares or 0 for z in group["zones"])),
                 "avg_suitability": float(np.mean(group["suitability_scores"])),
                 "zone_count": len(group["zones"]),
             })
 
-        # Fallback if fewer than 2 patches meet the >=3 zone threshold
-        if len(patches) < 2:
-            existing_pids = {p["patch_id"] for p in patches}
-            for pid, group in patch_groups.items():
-                if pid in existing_pids:
-                    continue
-                lats, lngs = [], []
-                for zone in group["zones"]:
-                    try:
-                        geom_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
-                        if geom_shape:
-                            centroid = geom_shape.centroid
-                            lats.append(centroid.y)
-                            lngs.append(centroid.x)
-                    except Exception:
-                        pass
-                if lats:
-                    patches.append({
-                        "patch_id": pid,
-                        "centroid_lat": float(np.mean(lats)),
-                        "centroid_lng": float(np.mean(lngs)),
-                        "area_hectares": float(sum(z.area_hectares or 0 for z in group["zones"])),
-                        "avg_suitability": float(np.mean(group["suitability_scores"])),
-                        "zone_count": len(group["zones"]),
-                    })
+        # If only 1 patch exists, split into quadrants
+        if len(patches) == 1 and len(zones) >= 8:
+            all_lats = patch_groups[patches[0]["patch_id"]]["lats"]
+            all_lngs = patch_groups[patches[0]["patch_id"]]["lngs"]
+            if len(all_lats) >= 8:
+                med_lat = float(np.median(all_lats))
+                med_lng = float(np.median(all_lngs))
+
+                q_data = [([], [], [], 0.0), ([], [], [], 0.0), ([], [], [], 0.0), ([], [], [], 0.0)]
+                for z, lat, lng in zip(zones, all_lats, all_lngs):
+                    q_idx = (0 if lat >= med_lat else 1) * 2 + (0 if lng >= med_lng else 1)
+                    q_data[q_idx][0].append(lat)
+                    q_data[q_idx][1].append(lng)
+                    q_data[q_idx][2].append(z.suitability_score)
+
+                new_patches = []
+                for idx, (qlats, qlngs, qscores, _) in enumerate(q_data):
+                    if len(qlats) >= 3:
+                        new_patches.append({
+                            "patch_id": idx + 1,
+                            "centroid_lat": float(np.mean(qlats)),
+                            "centroid_lng": float(np.mean(qlngs)),
+                            "area_hectares": float(len(qlats) * 2500.0),
+                            "avg_suitability": float(np.mean(qscores)),
+                            "zone_count": len(qlats),
+                        })
+                if len(new_patches) >= 2:
+                    patches = new_patches
 
         # Keep top significant habitat patches for robust & fast corridor generation
         patches.sort(key=lambda p: p["area_hectares"], reverse=True)

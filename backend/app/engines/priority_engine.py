@@ -119,7 +119,7 @@ class PriorityEngine:
 
         # Strategy 2: High-suitability zones that are fragmented
         for zone, zone_shape, centroid in parsed_zones:
-            if zone.id not in candidate_zone_ids and zone.suitability_score >= 0.5 and zone.fragmentation_level in ("medium", "high"):
+            if zone.id not in candidate_zone_ids and zone.suitability_score >= 0.45 and zone.fragmentation_level in ("medium", "high"):
                 candidate_zone_ids.add(zone.id)
                 candidates.append({
                     "zone": zone,
@@ -129,7 +129,23 @@ class PriorityEngine:
                     "near_corridor": False,
                 })
 
-        # Limit to top candidates for MVP
+        # Strategy 3: Top core habitat zones (if fewer than 20 candidates selected)
+        if len(candidates) < 20:
+            sorted_zones = sorted(parsed_zones, key=lambda p: p[0].suitability_score or 0, reverse=True)
+            for zone, zone_shape, centroid in sorted_zones:
+                if zone.id not in candidate_zone_ids:
+                    candidate_zone_ids.add(zone.id)
+                    candidates.append({
+                        "zone": zone,
+                        "geometry": zone_shape,
+                        "corridor_connectivity": 0,
+                        "corridor_resistance": 40,
+                        "near_corridor": False,
+                    })
+                if len(candidates) >= 50:
+                    break
+
+        # Limit to top candidates
         return candidates[:50]
 
     def _score_candidates(self, candidates: List[Dict]) -> List[Dict]:
@@ -188,14 +204,17 @@ class PriorityEngine:
         # Sort by priority score descending
         scored.sort(key=lambda x: x["priority_score"], reverse=True)
 
-        # Remove duplicates (keep highest-scored per patch)
-        seen_patches = set()
+        # Ensure spatial variety while allowing rich priority selections (up to 4 zones per patch)
+        patch_counts = {}
         unique = []
         for item in scored:
-            patch_id = item["zone"].patch_id
-            if patch_id not in seen_patches:
-                seen_patches.add(patch_id)
+            patch_id = item["zone"].patch_id or 0
+            count = patch_counts.get(patch_id, 0)
+            if count < 4:
+                patch_counts[patch_id] = count + 1
                 unique.append(item)
+            if len(unique) >= 20:
+                break
 
         # Assign ranks and levels
         for rank, item in enumerate(unique, 1):
