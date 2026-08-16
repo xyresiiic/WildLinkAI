@@ -8,19 +8,24 @@ import os
 
 def _get_db_path() -> str:
     """Resolve database path, ensuring writable /tmp directory on Vercel / serverless."""
-    is_serverless = os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(".", os.W_OK)
+    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(".", os.W_OK))
     if is_serverless:
         tmp_db = "/tmp/wildlink.db"
-        # If repo has a pre-seeded wildlink.db, copy it to /tmp on first boot
-        repo_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "wildlink.db"))
-        alt_repo_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wildlink.db"))
-        src_db = repo_db if os.path.exists(repo_db) else (alt_repo_db if os.path.exists(alt_repo_db) else None)
-        if src_db and not os.path.exists(tmp_db):
-            try:
-                import shutil
-                shutil.copy2(src_db, tmp_db)
-            except Exception:
-                pass
+        if not os.path.exists(tmp_db) or os.path.getsize(tmp_db) < 100000:
+            candidate_paths = [
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wildlink.db")),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "wildlink.db")),
+                "/var/task/backend/wildlink.db",
+                "/var/task/wildlink.db",
+            ]
+            for src_db in candidate_paths:
+                if os.path.exists(src_db) and os.path.getsize(src_db) > 100000:
+                    try:
+                        import shutil
+                        shutil.copy2(src_db, tmp_db)
+                        break
+                    except Exception:
+                        pass
         return tmp_db
     return "./wildlink.db"
 

@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from sqlalchemy import select, update
 from app.database import AsyncSessionLocal
-from app.models import AnalysisJob, Project, JobStatus
+from app.models import AnalysisJob, Project, JobStatus, ProjectStatus
 
 logger = logging.getLogger("wildlink.analysis")
 
@@ -74,7 +74,7 @@ async def run_full_analysis(
                 await db.execute(
                     update(Project)
                     .where(Project.id == project_id)
-                    .values(status="completed")
+                    .values(status=ProjectStatus.COMPLETED)
                 )
                 await db.commit()
                 logger.info(f"Fast-path analysis completed for project {project_id}")
@@ -129,7 +129,7 @@ async def run_full_analysis(
             await db.execute(
                 update(Project)
                 .where(Project.id == project_id)
-                .values(status="completed")
+                .values(status=ProjectStatus.COMPLETED)
             )
             await db.commit()
 
@@ -149,7 +149,7 @@ async def run_full_analysis(
             await db.execute(
                 update(Project)
                 .where(Project.id == project_id)
-                .values(status="failed")
+                .values(status=ProjectStatus.FAILED)
             )
             await db.commit()
 
