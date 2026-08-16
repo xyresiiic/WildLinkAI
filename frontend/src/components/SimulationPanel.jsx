@@ -21,10 +21,13 @@ function SimulationPanel({ project, priorityZones, onClose }) {
   const [scenarios, setScenarios] = useState([]);
   const [baseline, setBaseline] = useState(null);
 
-  // Load existing simulations
+  // Load existing simulations and pre-select top 3 zones
   useEffect(() => {
     loadScenarios();
-  }, [project.id]);
+    if (priorityZones && priorityZones.length > 0 && selectedZones.length === 0) {
+      setSelectedZones(priorityZones.slice(0, 3).map(z => z.id));
+    }
+  }, [project.id, priorityZones]);
 
   const loadScenarios = async () => {
     try {
@@ -46,20 +49,19 @@ function SimulationPanel({ project, priorityZones, onClose }) {
   };
 
   const selectTopZones = (count) => {
-    const topIds = priorityZones.slice(0, count).map(z => z.id);
+    const topIds = (priorityZones || []).slice(0, count).map(z => z.id);
     setSelectedZones(topIds);
   };
 
   const handleSimulate = async () => {
-    if (selectedZones.length === 0 && !scenarioName) return;
-
     setSimulating(true);
     try {
-      const defaultName = `${INTERVENTION_TYPES.find(t => t.id === interventionType)?.label.split(' ')[1] || 'Scenario'} on ${selectedZones.length} Zone${selectedZones.length === 1 ? '' : 's'}`;
+      const zoneCount = selectedZones.length > 0 ? selectedZones.length : Math.min(3, priorityZones?.length || 3);
+      const defaultName = `${INTERVENTION_TYPES.find(t => t.id === interventionType)?.label.split(' ')[1] || 'Scenario'} on ${zoneCount} Zone${zoneCount === 1 ? '' : 's'}`;
 
       const res = await createSimulation({
         project_id: project.id,
-        name: scenarioName || defaultName,
+        name: scenarioName.trim() || defaultName,
         intervention_type: interventionType,
         zone_ids: selectedZones.length > 0 ? selectedZones : undefined,
         parameters: { intensity },

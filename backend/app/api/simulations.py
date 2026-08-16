@@ -14,6 +14,7 @@ router = APIRouter(prefix="/simulations", tags=["Simulations"])
 
 
 @router.post("", response_model=None, status_code=202)
+@router.post("/run", response_model=None, status_code=202)
 async def create_simulation(
     data: SimulationCreate,
     background_tasks: BackgroundTasks,

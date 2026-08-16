@@ -98,29 +98,21 @@ class ConnectivityEngine:
             patch_groups[pid]["suitability_scores"].append(zone.suitability_score)
 
         patches = []
-        resolution = settings.DEFAULT_GRID_RESOLUTION
-        min_lat, max_lat = 22.0, 25.0
-        min_lng, max_lng = 78.5, 82.5
-        n_cols = int((max_lng - min_lng) / resolution)
 
         for pid, group in patch_groups.items():
             if len(group["zones"]) < 3:
-                continue  # Skip very small patches
+                continue  # Skip very small patches in primary pass
 
-            # Compute centroid from zone positions
             lats, lngs = [], []
             for zone in group["zones"]:
-                if zone.patch_id is not None:
-                    orig_id = zone.patch_id if zone.patch_id != pid else zone.id
-                    # Approximate position
-                    try:
-                        geom_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
-                        if geom_shape:
-                            centroid = geom_shape.centroid
-                            lats.append(centroid.y)
-                            lngs.append(centroid.x)
-                    except Exception:
-                        pass
+                try:
+                    geom_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
+                    if geom_shape:
+                        centroid = geom_shape.centroid
+                        lats.append(centroid.y)
+                        lngs.append(centroid.x)
+                except Exception:
+                    pass
 
             if not lats:
                 continue
@@ -133,6 +125,32 @@ class ConnectivityEngine:
                 "avg_suitability": float(np.mean(group["suitability_scores"])),
                 "zone_count": len(group["zones"]),
             })
+
+        # Fallback if fewer than 2 patches meet the >=3 zone threshold
+        if len(patches) < 2:
+            existing_pids = {p["patch_id"] for p in patches}
+            for pid, group in patch_groups.items():
+                if pid in existing_pids:
+                    continue
+                lats, lngs = [], []
+                for zone in group["zones"]:
+                    try:
+                        geom_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
+                        if geom_shape:
+                            centroid = geom_shape.centroid
+                            lats.append(centroid.y)
+                            lngs.append(centroid.x)
+                    except Exception:
+                        pass
+                if lats:
+                    patches.append({
+                        "patch_id": pid,
+                        "centroid_lat": float(np.mean(lats)),
+                        "centroid_lng": float(np.mean(lngs)),
+                        "area_hectares": float(sum(z.area_hectares or 0 for z in group["zones"])),
+                        "avg_suitability": float(np.mean(group["suitability_scores"])),
+                        "zone_count": len(group["zones"]),
+                    })
 
         # Keep top significant habitat patches for robust & fast corridor generation
         patches.sort(key=lambda p: p["area_hectares"], reverse=True)
@@ -237,8 +255,8 @@ class ConnectivityEngine:
         if r1 == r2 and c1 == c2:
             return [(r1, c1)], float(resistance_grid[r1, c1])
 
-        # Bounding box with buffer around endpoints to optimize search speed
-        pad = 8
+        # Bounding box with adaptive buffer around endpoints to optimize search speed & route quality
+        pad = max(15, int(max(abs(r2 - r1), abs(c2 - c1)) * 0.35))
         min_r, max_r = max(0, min(r1, r2) - pad), min(n_rows - 1, max(r1, r2) + pad)
         min_c, max_c = max(0, min(c1, c2) - pad), min(n_cols - 1, max(c1, c2) + pad)
 
@@ -294,6 +312,58 @@ class ConnectivityEngine:
         path.reverse()
 
         return path, float(dist.get((r2, c2), 0.0))
+
+    def _calculate_graph_metrics(self, G: nx.Graph) -> dict:
+        """Calculate network graph metrics."""
+        if G.number_of_nodes() == 0:
+            return {"overall_connectivity": 0.0, "density": 0.0, "connected_components": 0}
+
+        try:
+            density = float(nx.density(G))
+        except Exception:
+            density = 0.0
+
+        try:
+            num_components = nx.number_connected_components(G)
+        except Exception:
+            num_components = 1
+
+        edge_scores = [d.get("connectivity_score", 50.0) for _, _, d in G.edges(data=True)]
+        avg_score = float(np.mean(edge_scores)) if edge_scores else 50.0
+
+        return {
+            "overall_connectivity": round(avg_score, 2),
+            "density": round(density, 4),
+            "connected_components": num_components,
+            "node_count": G.number_of_nodes(),
+            "edge_count": G.number_of_edges(),
+        }
+
+    def _generate_corridors(
+        self, graph: nx.Graph, patches: List[Dict], resistance_grid: np.ndarray, grid_meta: dict
+    ) -> List[Dict]:
+        """Generate corridor objects from graph edges."""
+        patch_lookup = {p["patch_id"]: p for p in patches}
+        corridors = []
+
+        for u, v, data in graph.edges(data=True):
+            p1 = patch_lookup.get(u)
+            p2 = patch_lookup.get(v)
+            if not p1 or not p2:
+                continue
+
+            waypoints = self._generate_waypoints(p1, p2, resistance_grid, grid_meta)
+            corridors.append({
+                "source_patch_id": u,
+                "target_patch_id": v,
+                "connectivity_score": data.get("connectivity_score", 50.0),
+                "resistance_score": data.get("cost", 50.0),
+                "length_km": data.get("distance_km", 10.0),
+                "cost": data.get("cost", 50.0),
+                "waypoints": waypoints,
+            })
+
+        return corridors
 
     async def _store_corridors(self, corridors: List[Dict]):
         """Store corridors in the database."""

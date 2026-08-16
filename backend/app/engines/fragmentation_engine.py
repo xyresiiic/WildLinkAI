@@ -77,26 +77,32 @@ class FragmentationEngine:
         return result.scalars().all()
 
     def _build_grid(self, zones) -> tuple:
-        """Build a 2D numpy grid from habitat zones."""
-        # Determine grid bounds
+        """Build a 2D numpy grid from habitat zones using coordinate bounds."""
         lats = []
         lngs = []
-        scores = {}
+        zone_coords = []
 
         for zone in zones:
-            if zone.metadata_:
-                # Use patch_id to reconstruct grid position
-                pass
-            # Use suitability_score directly
-            scores[zone.patch_id] = zone.suitability_score
+            if zone.geometry and isinstance(zone.geometry, dict) and "coordinates" in zone.geometry:
+                coords = zone.geometry["coordinates"][0]
+                z_lngs = [pt[0] for pt in coords]
+                z_lats = [pt[1] for pt in coords]
+                c_lat = float(np.mean(z_lats))
+                c_lng = float(np.mean(z_lngs))
+                lats.extend(z_lats)
+                lngs.extend(z_lngs)
+                zone_coords.append((zone, c_lat, c_lng))
 
-        # Build from known grid
         resolution = settings.DEFAULT_GRID_RESOLUTION
-        min_lat, max_lat = 22.0, 25.0
-        min_lng, max_lng = 78.5, 82.5
+        if lats and lngs:
+            min_lat, max_lat = min(lats), max(lats)
+            min_lng, max_lng = min(lngs), max(lngs)
+        else:
+            min_lat, max_lat = 22.0, 25.0
+            min_lng, max_lng = 78.5, 82.5
 
-        n_rows = int((max_lat - min_lat) / resolution)
-        n_cols = int((max_lng - min_lng) / resolution)
+        n_rows = max(10, int(round((max_lat - min_lat) / resolution)) + 1)
+        n_cols = max(10, int(round((max_lng - min_lng) / resolution)) + 1)
 
         grid = np.zeros((n_rows, n_cols))
         grid_meta = {
@@ -106,13 +112,11 @@ class FragmentationEngine:
             "n_rows": n_rows, "n_cols": n_cols,
         }
 
-        # Fill grid from zones
-        for zone in zones:
-            if zone.patch_id is not None:
-                row = zone.patch_id // n_cols
-                col = zone.patch_id % n_cols
-                if 0 <= row < n_rows and 0 <= col < n_cols:
-                    grid[row, col] = zone.suitability_score
+        # Fill grid from zones using coordinate positions
+        for zone, c_lat, c_lng in zone_coords:
+            r = max(0, min(int(round((c_lat - min_lat - resolution / 2) / resolution)), n_rows - 1))
+            c = max(0, min(int(round((c_lng - min_lng - resolution / 2) / resolution)), n_cols - 1))
+            grid[r, c] = zone.suitability_score
 
         return grid, grid_meta
 
@@ -142,7 +146,6 @@ class FragmentationEngine:
             avg_suitability = float(np.mean(suitability_grid[mask]))
 
             # Compactness (ratio of area to perimeter²)
-            # Simple: count edge pixels
             eroded = ndimage.binary_erosion(mask)
             perimeter_pixels = np.sum(mask) - np.sum(eroded)
             compactness = pixel_count / max(1, (perimeter_pixels ** 2)) * 100
@@ -177,26 +180,42 @@ class FragmentationEngine:
     async def _update_zones_with_patches(
         self, zones, labeled_grid, grid_meta, patch_metrics
     ):
-        """Update habitat zones with connected component patch IDs."""
+        """Update habitat zones with connected component patch IDs in bulk."""
         n_cols = grid_meta["n_cols"]
         n_rows = grid_meta["n_rows"]
+        resolution = grid_meta["resolution"]
+        min_lat = grid_meta["min_lat"]
+        min_lng = grid_meta["min_lng"]
 
         # Build a lookup from patch_metrics
         patch_lookup = {pm["patch_id"]: pm for pm in patch_metrics}
+        update_data = []
 
         for zone in zones:
-            if zone.patch_id is not None:
-                row = zone.patch_id // n_cols
-                col = zone.patch_id % n_cols
-                if 0 <= row < n_rows and 0 <= col < n_cols:
-                    component_id = int(labeled_grid[row, col])
-                    if component_id > 0 and component_id in patch_lookup:
-                        pm = patch_lookup[component_id]
-                        zone.patch_id = component_id
-                        zone.nearest_patch_distance_km = pm.get("nearest_patch_distance_km")
-                        zone.fragmentation_level = self._classify_fragmentation(pm)
+            if zone.geometry and isinstance(zone.geometry, dict) and "coordinates" in zone.geometry:
+                coords = zone.geometry["coordinates"][0]
+                c_lat = float(np.mean([pt[1] for pt in coords]))
+                c_lng = float(np.mean([pt[0] for pt in coords]))
+                r = max(0, min(int(round((c_lat - min_lat - resolution / 2) / resolution)), n_rows - 1))
+                c = max(0, min(int(round((c_lng - min_lng - resolution / 2) / resolution)), n_cols - 1))
 
-        await self.db.flush()
+                component_id = int(labeled_grid[r, c])
+                if component_id > 0:
+                    pm = patch_lookup.get(component_id)
+                    nearest_km = pm.get("nearest_patch_distance_km") if pm else None
+                    frag_lvl = self._classify_fragmentation(pm) if pm else "high"
+
+                    update_data.append({
+                        "id": zone.id,
+                        "patch_id": component_id,
+                        "nearest_patch_distance_km": nearest_km,
+                        "fragmentation_level": frag_lvl,
+                    })
+
+        if update_data:
+            self.db.expunge_all()
+            await self.db.execute(update(HabitatZone), update_data)
+            await self.db.flush()
 
     def _classify_fragmentation(self, patch_metric: dict) -> str:
         """Classify fragmentation level for a patch."""

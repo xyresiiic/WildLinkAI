@@ -154,8 +154,11 @@ function App() {
       if (proj.species) setSelectedSpecies(proj.species);
       window.location.hash = proj.id;
 
-      const dashRes = await getDashboard(proj.id);
+      const dashRes = await getDashboard(proj.id).catch(() => ({ data: { data: null } }));
       setDashboard(dashRes.data.data);
+
+      // Always load observations for the species
+      const obsRes = await getObservations(proj.id).catch(() => ({ data: { data: { count: 0, features: [] } } }));
 
       if (proj.status === 'completed' || dashRes.data.data?.total_corridors > 0) {
         setAnalysisStatus('completed');
@@ -163,7 +166,7 @@ function App() {
       } else {
         setAnalysisStatus('idle');
         setLayers(prev => ({
-          observations: { ...prev.observations, data: null },
+          observations: { ...prev.observations, data: obsRes.data.data },
           habitat: { ...prev.habitat, data: null },
           corridors: { ...prev.corridors, data: null },
           priority: { ...prev.priority, data: null },
@@ -184,6 +187,12 @@ function App() {
     setAnalysisStatus('idle');
     setPriorityZones([]);
     setFocusCoords(null);
+    setLayers(prev => ({
+      observations: { ...prev.observations, data: null },
+      habitat: { ...prev.habitat, data: null },
+      corridors: { ...prev.corridors, data: null },
+      priority: { ...prev.priority, data: null },
+    }));
     window.location.hash = '';
     loadProjects();
     addToast('Select a species to configure a new analysis.', 'info');
@@ -243,14 +252,24 @@ function App() {
       window.location.hash = proj.id;
 
       // Load dashboard
-      const dashRes = await getDashboard(proj.id);
+      const dashRes = await getDashboard(proj.id).catch(() => ({ data: { data: null } }));
       setDashboard(dashRes.data.data);
+
+      // Always load observations immediately for visual context
+      const obsRes = await getObservations(proj.id).catch(() => ({ data: { data: { count: 0, features: [] } } }));
 
       if (proj.status === 'completed' || dashRes.data.data?.total_corridors > 0) {
         setAnalysisStatus('completed');
         await loadAnalysisResultsForProject(proj.id);
       } else {
         setAnalysisStatus('idle');
+        setLayers(prev => ({
+          observations: { ...prev.observations, data: obsRes.data.data },
+          habitat: { ...prev.habitat, data: null },
+          corridors: { ...prev.corridors, data: null },
+          priority: { ...prev.priority, data: null },
+        }));
+        setPriorityZones([]);
       }
     } catch (err) {
       console.error('Failed to set up project:', err);
@@ -336,7 +355,7 @@ function App() {
         getCorridors(projId).catch(() => ({ data: { data: { count: 0, features: [] } } })),
         getPriorityZones(projId).catch(() => ({ data: { data: { count: 0, features: [] } } })),
         getObservations(projId).catch(() => ({ data: { data: { count: 0, features: [] } } })),
-        getDashboard(projId),
+        getDashboard(projId).catch(() => ({ data: { data: null } })),
       ]);
 
       setLayers(prev => ({

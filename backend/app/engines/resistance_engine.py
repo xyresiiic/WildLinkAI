@@ -142,9 +142,6 @@ class ResistanceEngine:
         total = base_resistance + road_resistance + settlement_resistance + water_resistance - pa_bonus
         return max(1.0, min(100.0, total))
 
-        # Clamp to [1, 100]
-        return max(1.0, min(100.0, total))
-
     def _road_resistance(self, lat: float, lng: float) -> float:
         """Simulate road corridor resistance."""
         # National Highway approximations

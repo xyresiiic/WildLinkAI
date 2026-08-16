@@ -12,7 +12,8 @@ from sqlalchemy import event
 # Async engine for FastAPI
 async_engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
+    echo=False,
+    connect_args={"timeout": 60},
 )
 
 @event.listens_for(async_engine.sync_engine, "connect")
@@ -20,6 +21,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.execute("PRAGMA synchronous=NORMAL;")
+    cursor.execute("PRAGMA busy_timeout=60000;")
     cursor.close()
 
 # Async session factory
@@ -32,8 +34,17 @@ AsyncSessionLocal = async_sessionmaker(
 # Sync engine for GIS/ML operations
 sync_engine = create_engine(
     settings.DATABASE_URL_SYNC,
-    echo=settings.DEBUG,
+    echo=False,
+    connect_args={"timeout": 60},
 )
+
+@event.listens_for(sync_engine, "connect")
+def set_sync_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA synchronous=NORMAL;")
+    cursor.execute("PRAGMA busy_timeout=60000;")
+    cursor.close()
 
 
 class Base(DeclarativeBase):
