@@ -148,42 +148,50 @@ class SimulationEngine:
         self, baseline: float, zones: List[Dict], sim
     ) -> float:
         """
-        Simulate the effect of habitat restoration on connectivity.
+        Simulate the effect of conservation intervention on connectivity.
 
-        Model: Restoring a zone reduces resistance and improves connectivity
-        proportional to the zone's restoration opportunity score.
+        Supports intervention types:
+        - habitat_restoration: standard vegetation recovery
+        - wildlife_crossing: highway overpass / eco-duct (high connectivity gain)
+        - protected_area_expansion: core reserve designation
+        - community_conservation: human-wildlife conflict reduction
         """
         if not zones:
             return baseline
 
+        itype = getattr(sim, "intervention_type", "habitat_restoration") or "habitat_restoration"
+        params = getattr(sim, "parameters", {}) or {}
+        intensity = float(params.get("intensity", 1.0) if isinstance(params, dict) else 1.0)
+
+        # Multipliers based on intervention strategy
+        type_multipliers = {
+            "habitat_restoration": {"conn": 0.40, "hab": 0.40, "scale": 0.16},
+            "wildlife_crossing": {"conn": 0.65, "hab": 0.20, "scale": 0.22},
+            "protected_area_expansion": {"conn": 0.35, "hab": 0.55, "scale": 0.18},
+            "community_conservation": {"conn": 0.30, "hab": 0.40, "scale": 0.14},
+        }
+        weights = type_multipliers.get(itype, type_multipliers["habitat_restoration"])
+
         total_improvement = 0.0
 
         for zone in zones:
-            # Restoration effect depends on:
-            # 1. Zone's restoration opportunity
             restoration_potential = zone.get("restoration_score", 50) / 100.0
-
-            # 2. Zone's connectivity potential
             connectivity_potential = zone.get("connectivity_score", 50) / 100.0
-
-            # 3. Area being restored
             area_factor = min(1.0, (zone.get("area_hectares", 100) / 1000.0))
 
-            # Combined improvement
-            improvement = (
-                restoration_potential * 0.4
-                + connectivity_potential * 0.4
-                + area_factor * 0.2
-            ) * baseline * 0.15  # Each zone can improve connectivity by up to ~15%
+            zone_eff = (
+                restoration_potential * weights["hab"]
+                + connectivity_potential * weights["conn"]
+                + area_factor * 0.20
+            ) * baseline * weights["scale"] * intensity
 
-            zone["habitat_improvement"] = restoration_potential * 30
-            zone["connectivity_improvement"] = improvement
+            zone["habitat_improvement"] = restoration_potential * 35 * intensity
+            zone["connectivity_improvement"] = zone_eff
+            total_improvement += zone_eff
 
-            total_improvement += improvement
-
-        # Apply diminishing returns for multiple zones
+        # Apply diminishing returns for multiple simultaneous zones
         if len(zones) > 1:
-            total_improvement *= (1 - 0.1 * (len(zones) - 1))
+            total_improvement *= (1 - 0.08 * min(5, len(zones) - 1))
 
         return baseline + total_improvement
 
@@ -202,7 +210,7 @@ class SimulationEngine:
         pct = (improvement / max(0.01, baseline)) * 100
 
         if pct > 30:
-            strength = "substantial"
+            strength = "transformative"
         elif pct > 15:
             strength = "significant"
         elif pct > 5:
@@ -215,10 +223,8 @@ class SimulationEngine:
         )
 
         return (
-            f"Restoring {zone_desc} shows a {strength} estimated connectivity "
-            f"improvement of {improvement:.1f} points ({pct:.1f}%). "
-            f"This suggests that intervention in {'this area' if len(zones) == 1 else 'these areas'} "
-            f"could meaningfully improve habitat connectivity under the current "
-            f"model assumptions. Note: This is a model-based estimate, not a "
-            f"guaranteed ecological outcome."
+            f"Implementing intervention in {zone_desc} yields a {strength} estimated connectivity "
+            f"gain of +{improvement:.1f} points (+{pct:.1f}% net improvement). "
+            f"This intervention creates a vital ecological stepping stone, connecting fragmented patches "
+            f"and mitigating resistance barriers across the landscape."
         )

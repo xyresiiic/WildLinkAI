@@ -161,6 +161,8 @@ async def get_priority_zones(project_id: str, db: AsyncSession = Depends(get_db)
                 "explanation": zone.explanation,
                 "evidence_quality": zone.evidence_quality.value if zone.evidence_quality else None,
                 "area_hectares": zone.area_hectares,
+                "recommended_action": (zone.factors_json.get("recommended_action") if zone.factors_json and isinstance(zone.factors_json, dict) else "Conservation Buffer"),
+                "factors_json": zone.factors_json,
             }
         })
 

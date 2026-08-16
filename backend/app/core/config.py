@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # Analysis defaults
     HABITAT_SUITABILITY_THRESHOLD: float = 0.5
-    DEFAULT_GRID_RESOLUTION: float = 0.025  # degrees (~2.5km) for optimal analysis performance
+    DEFAULT_GRID_RESOLUTION: float = 0.035  # degrees (~3.8km) for optimal analysis & interactive speed
 
     # Priority weights (configurable)
     WEIGHT_HABITAT: float = 0.25
@@ -52,10 +52,14 @@ class Settings(BaseSettings):
     WEIGHT_RESTORATION: float = 0.15
     WEIGHT_CONSTRAINT: float = 0.05
 
+    BACKEND_PORT: int = 8000
+    FRONTEND_PORT: int = 5173
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",
     }
 
 

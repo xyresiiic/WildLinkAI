@@ -46,6 +46,7 @@ async def create_species(data: SpeciesCreate, db: AsyncSession = Depends(get_db)
     )
     db.add(species)
     await db.flush()
+    await db.commit()
     await db.refresh(species)
     return success_response(
         data=SpeciesResponse.model_validate(species).model_dump(mode="json"),

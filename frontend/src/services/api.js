@@ -23,6 +23,7 @@ export const getProject = (id) => api.get(`/projects/${id}`);
 export const createProject = (data) => api.post('/projects', data);
 export const deleteProject = (id) => api.delete(`/projects/${id}`);
 export const getDashboard = (projectId) => api.get(`/projects/${projectId}/dashboard`);
+export const exportProjectData = (projectId) => api.get(`/projects/${projectId}/export`);
 
 // ────────────── Analysis ──────────────
 export const runAnalysis = (data) => api.post('/analysis/run', data);

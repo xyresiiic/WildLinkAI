@@ -255,6 +255,16 @@ class PriorityEngine:
             else:
                 item["evidence_quality"] = EvidenceQuality.LOW
 
+            # Recommended Action
+            if dominant == "connectivity" and item.get("corridor_resistance", 0) > 30:
+                item["recommended_action"] = "Construct Wildlife Overpass / Eco-duct across Transport Corridor"
+            elif dominant == "restoration":
+                item["recommended_action"] = "Targeted Reforestation & Native Vegetation Corridor Planting"
+            elif dominant == "habitat":
+                item["recommended_action"] = "Designate Protected Core Buffer & Enhance Anti-Poaching Patrols"
+            else:
+                item["recommended_action"] = "Community Conservation Reserve & Human-Wildlife Conflict Mitigation"
+
         return ranked
 
     async def _store_results(self, zones: List[Dict]):
@@ -286,6 +296,7 @@ class PriorityEngine:
                     "species": item["species_score"],
                     "restoration": item["restoration_score"],
                     "constraint": item["constraint_score"],
+                    "recommended_action": item.get("recommended_action", "Conservation Buffer"),
                     "weights": self.weights,
                 },
                 area_hectares=zone.area_hectares,

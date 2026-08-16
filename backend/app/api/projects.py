@@ -195,3 +195,94 @@ async def get_dashboard(project_id: str, db: AsyncSession = Depends(get_db)):
     )
 
     return success_response(data=stats.model_dump(mode="json"))
+
+
+@router.get("/{project_id}/export", response_model=None)
+async def export_project_data(project_id: str, db: AsyncSession = Depends(get_db)):
+    """Export complete project GIS data layers and executive conservation summary as JSON."""
+    result = await db.execute(
+        select(Project).options(selectinload(Project.species)).where(Project.id == project_id)
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Load all layers
+    hz_res = await db.execute(select(HabitatZone).where(HabitatZone.project_id == project_id))
+    cor_res = await db.execute(select(Corridor).where(Corridor.project_id == project_id))
+    pz_res = await db.execute(select(PriorityZone).where(PriorityZone.project_id == project_id).order_by(PriorityZone.rank))
+    sim_res = await db.execute(select(Simulation).where(Simulation.project_id == project_id))
+
+    zones = hz_res.scalars().all()
+    corridors = cor_res.scalars().all()
+    priority_zones = pz_res.scalars().all()
+    simulations = sim_res.scalars().all()
+
+    export_bundle = {
+        "project": {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "region_name": project.region_name,
+            "species": project.species.common_name if project.species else None,
+            "conservation_status": project.species.conservation_status if project.species else None,
+            "created_at": project.created_at.isoformat() if project.created_at else None,
+        },
+        "summary": {
+            "habitat_zones_count": len(zones),
+            "corridors_count": len(corridors),
+            "priority_zones_count": len(priority_zones),
+            "simulations_count": len(simulations),
+        },
+        "habitat_zones": {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": z.geometry,
+                "properties": {
+                    "suitability_score": z.suitability_score,
+                    "area_hectares": z.area_hectares,
+                    "fragmentation_level": z.fragmentation_level,
+                }
+            } for z in zones]
+        },
+        "corridors": {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": c.geometry,
+                "properties": {
+                    "connectivity_score": c.connectivity_score,
+                    "resistance_score": c.resistance_score,
+                    "length_km": c.length_km,
+                }
+            } for c in corridors]
+        },
+        "priority_zones": {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": pz.geometry,
+                "properties": {
+                    "rank": pz.rank,
+                    "priority_score": pz.priority_score,
+                    "priority_level": pz.priority_level,
+                    "dominant_factor": pz.dominant_factor,
+                    "explanation": pz.explanation,
+                    "recommended_action": pz.factors_json.get("recommended_action") if pz.factors_json else None,
+                }
+            } for pz in priority_zones]
+        },
+        "simulations": [
+            {
+                "name": s.name,
+                "intervention_type": s.intervention_type,
+                "baseline_connectivity": s.baseline_connectivity,
+                "simulated_connectivity": s.simulated_connectivity,
+                "improvement": s.improvement,
+                "percentage_change": s.percentage_change,
+            } for s in simulations if s.status == "completed"
+        ]
+    }
+
+    return success_response(data=export_bundle, message="Project data bundle exported successfully")

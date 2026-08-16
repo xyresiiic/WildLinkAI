@@ -127,14 +127,16 @@ class ConnectivityEngine:
 
             patches.append({
                 "patch_id": pid,
-                "centroid_lat": np.mean(lats),
-                "centroid_lng": np.mean(lngs),
-                "area_hectares": sum(z.area_hectares or 0 for z in group["zones"]),
+                "centroid_lat": float(np.mean(lats)),
+                "centroid_lng": float(np.mean(lngs)),
+                "area_hectares": float(sum(z.area_hectares or 0 for z in group["zones"])),
                 "avg_suitability": float(np.mean(group["suitability_scores"])),
                 "zone_count": len(group["zones"]),
             })
 
-        return patches
+        # Keep top significant habitat patches for robust & fast corridor generation
+        patches.sort(key=lambda p: p["area_hectares"], reverse=True)
+        return patches[:25]
 
     def _build_graph(
         self, patches: List[Dict], resistance_grid: np.ndarray, grid_meta: dict
@@ -188,127 +190,110 @@ class ConnectivityEngine:
     def _compute_path_cost(
         self, p1: Dict, p2: Dict, resistance_grid: np.ndarray, grid_meta: dict
     ) -> float:
-        """Compute approximate least-cost path between two patch centroids."""
-        resolution = grid_meta["resolution"]
-        n_rows = grid_meta["n_rows"]
-        n_cols = grid_meta["n_cols"]
-
-        # Convert centroids to grid coordinates
-        r1 = int((p1["centroid_lat"] - grid_meta["min_lat"]) / resolution)
-        c1 = int((p1["centroid_lng"] - grid_meta["min_lng"]) / resolution)
-        r2 = int((p2["centroid_lat"] - grid_meta["min_lat"]) / resolution)
-        c2 = int((p2["centroid_lng"] - grid_meta["min_lng"]) / resolution)
-
-        # Clamp to grid bounds
-        r1, c1 = max(0, min(r1, n_rows-1)), max(0, min(c1, n_cols-1))
-        r2, c2 = max(0, min(r2, n_rows-1)), max(0, min(c2, n_cols-1))
-
-        # Simple straight-line cost integration (approximation of least-cost path)
-        # For full LCP, scipy.ndimage or skimage could be used
-        n_steps = max(abs(r2 - r1), abs(c2 - c1), 1)
-        total_cost = 0.0
-
-        for step in range(n_steps + 1):
-            t = step / max(1, n_steps)
-            r = int(r1 + (r2 - r1) * t)
-            c = int(c1 + (c2 - c1) * t)
-            r = max(0, min(r, n_rows - 1))
-            c = max(0, min(c, n_cols - 1))
-            total_cost += resistance_grid[r, c]
-
-        return total_cost
-
-    def _calculate_graph_metrics(self, graph: nx.Graph) -> Dict:
-        """Calculate useful graph metrics."""
-        if graph.number_of_nodes() == 0:
-            return {"overall_connectivity": 0}
-
-        metrics = {
-            "nodes": graph.number_of_nodes(),
-            "edges": graph.number_of_edges(),
-            "connected_components": nx.number_connected_components(graph),
-            "density": round(nx.density(graph), 4),
-        }
-
-        # Degree centrality
-        if graph.number_of_nodes() > 1:
-            centrality = nx.degree_centrality(graph)
-            metrics["max_centrality_node"] = max(centrality, key=centrality.get)
-            metrics["avg_centrality"] = round(np.mean(list(centrality.values())), 4)
-
-            # Betweenness centrality (identifies bridge nodes)
-            betweenness = nx.betweenness_centrality(graph, weight="cost")
-            metrics["bridge_nodes"] = [
-                n for n, c in betweenness.items() if c > 0.1
-            ]
-
-        # Overall connectivity score (0-100)
-        if graph.number_of_edges() > 0:
-            avg_connectivity = np.mean([
-                d.get("connectivity_score", 0)
-                for _, _, d in graph.edges(data=True)
-            ])
-            metrics["overall_connectivity"] = round(avg_connectivity, 2)
-        else:
-            metrics["overall_connectivity"] = 0
-
-        return metrics
-
-    def _generate_corridors(
-        self, graph: nx.Graph, patches: List[Dict],
-        resistance_grid: np.ndarray, grid_meta: dict
-    ) -> List[Dict]:
-        """Generate corridor geometries from graph edges."""
-        patch_lookup = {p["patch_id"]: p for p in patches}
-        corridors = []
-
-        for u, v, data in graph.edges(data=True):
-            p1 = patch_lookup.get(u)
-            p2 = patch_lookup.get(v)
-            if not p1 or not p2:
-                continue
-
-            # Generate waypoints for a more natural-looking corridor
-            waypoints = self._generate_waypoints(
-                p1, p2, resistance_grid, grid_meta
-            )
-
-            corridors.append({
-                "source_patch_id": u,
-                "target_patch_id": v,
-                "connectivity_score": data.get("connectivity_score", 0),
-                "resistance_score": data.get("cost", 0),
-                "length_km": data.get("distance_km", 0),
-                "cost": data.get("cost", 0),
-                "waypoints": waypoints,
-            })
-
-        return corridors
+        """Compute least-cost path cost between two patch centroids using Dijkstra on resistance surface."""
+        path, cost = self._find_least_cost_path(p1, p2, resistance_grid, grid_meta)
+        return cost
 
     def _generate_waypoints(
         self, p1: Dict, p2: Dict, resistance_grid: np.ndarray, grid_meta: dict
     ) -> List[Tuple[float, float]]:
-        """Generate waypoints for a corridor path with some curvature."""
-        lat1, lng1 = p1["centroid_lat"], p1["centroid_lng"]
-        lat2, lng2 = p2["centroid_lat"], p2["centroid_lng"]
+        """Generate least-cost path waypoints on the resistance surface."""
+        path, _ = self._find_least_cost_path(p1, p2, resistance_grid, grid_meta)
+        if len(path) < 2:
+            return [(p1["centroid_lng"], p1["centroid_lat"]), (p2["centroid_lng"], p2["centroid_lat"])]
 
-        n_points = max(5, int(np.sqrt((lat2-lat1)**2 + (lng2-lng1)**2) / 0.05))
         waypoints = []
+        resolution = grid_meta["resolution"]
+        min_lat = grid_meta["min_lat"]
+        min_lng = grid_meta["min_lng"]
 
-        for i in range(n_points + 1):
-            t = i / n_points
-            lat = lat1 + (lat2 - lat1) * t
-            lng = lng1 + (lng2 - lng1) * t
+        # Sample path points to keep GeoJSON clean and smooth
+        step = max(1, len(path) // 30)
+        sampled_path = path[::step]
+        if path[-1] not in sampled_path:
+            sampled_path.append(path[-1])
 
-            # Add slight deviation based on resistance (path follows lower resistance)
-            if 0 < t < 1:
-                offset = 0.02 * np.sin(t * np.pi * 3) * np.cos(t * np.pi * 2)
-                lat += offset
-                lng += offset * 0.7
-
-            waypoints.append((lng, lat))  # GeoJSON uses [lng, lat]
+        for r, c in sampled_path:
+            lat = min_lat + r * resolution + resolution / 2
+            lng = min_lng + c * resolution + resolution / 2
+            waypoints.append((round(float(lng), 5), round(float(lat), 5)))
 
         return waypoints
+
+    def _find_least_cost_path(
+        self, p1: Dict, p2: Dict, resistance_grid: np.ndarray, grid_meta: dict
+    ) -> Tuple[List[Tuple[int, int]], float]:
+        """Find the optimal least-cost path between two centroids using 8-connected Dijkstra search."""
+        import heapq
+        resolution = grid_meta["resolution"]
+        n_rows = grid_meta["n_rows"]
+        n_cols = grid_meta["n_cols"]
+
+        r1 = max(0, min(int((p1["centroid_lat"] - grid_meta["min_lat"]) / resolution), n_rows - 1))
+        c1 = max(0, min(int((p1["centroid_lng"] - grid_meta["min_lng"]) / resolution), n_cols - 1))
+        r2 = max(0, min(int((p2["centroid_lat"] - grid_meta["min_lat"]) / resolution), n_rows - 1))
+        c2 = max(0, min(int((p2["centroid_lng"] - grid_meta["min_lng"]) / resolution), n_cols - 1))
+
+        if r1 == r2 and c1 == c2:
+            return [(r1, c1)], float(resistance_grid[r1, c1])
+
+        # Bounding box with buffer around endpoints to optimize search speed
+        pad = 8
+        min_r, max_r = max(0, min(r1, r2) - pad), min(n_rows - 1, max(r1, r2) + pad)
+        min_c, max_c = max(0, min(c1, c2) - pad), min(n_cols - 1, max(c1, c2) + pad)
+
+        pq = [(0.0, r1, c1)]
+        dist = {(r1, c1): 0.0}
+        parent = {}
+
+        directions = [
+            (-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0),
+            (-1, -1, 1.414), (-1, 1, 1.414), (1, -1, 1.414), (1, 1, 1.414)
+        ]
+
+        found = False
+        while pq:
+            d, r, c = heapq.heappop(pq)
+            if (r, c) == (r2, c2):
+                found = True
+                break
+            if d > dist.get((r, c), float("inf")):
+                continue
+
+            for dr, dc, step_cost in directions:
+                nr, nc = r + dr, c + dc
+                if min_r <= nr <= max_r and min_c <= nc <= max_c:
+                    res_val = (resistance_grid[r, c] + resistance_grid[nr, nc]) / 2.0
+                    edge_cost = res_val * step_cost
+                    new_dist = d + edge_cost
+
+                    if new_dist < dist.get((nr, nc), float("inf")):
+                        dist[(nr, nc)] = new_dist
+                        parent[(nr, nc)] = (r, c)
+                        heapq.heappush(pq, (new_dist, nr, nc))
+
+        # Reconstruct path
+        if not found:
+            # Fallback to straight-line interpolation
+            n_steps = max(abs(r2 - r1), abs(c2 - c1), 1)
+            line_path = []
+            cost = 0.0
+            for i in range(n_steps + 1):
+                t = i / max(1, n_steps)
+                lr = int(r1 + (r2 - r1) * t)
+                lc = int(c1 + (c2 - c1) * t)
+                line_path.append((lr, lc))
+                cost += float(resistance_grid[lr, lc])
+            return line_path, cost
+
+        curr = (r2, c2)
+        path = [curr]
+        while curr in parent:
+            curr = parent[curr]
+            path.append(curr)
+        path.reverse()
+
+        return path, float(dist.get((r2, c2), 0.0))
 
     async def _store_corridors(self, corridors: List[Dict]):
         """Store corridors in the database."""
