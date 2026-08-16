@@ -327,6 +327,18 @@ function App() {
       }
     } catch (err) {
       console.error('Analysis failed:', err);
+      // Verify if project data is already available before marking failed
+      try {
+        const dash = await getDashboard(project.id);
+        if (dash.data.data?.total_corridors > 0) {
+          setAnalysisStatus('completed');
+          await loadAnalysisResultsForProject(project.id);
+          addToast('Landscape model loaded successfully.', 'success');
+          return;
+        }
+      } catch {
+        // ignore
+      }
       setAnalysisStatus('failed');
       addToast('Failed to start analysis pipeline.', 'error');
     }

@@ -69,7 +69,7 @@ class PriorityEngine:
             select(HabitatZone)
             .where(
                 HabitatZone.project_id == self.project_id,
-                HabitatZone.suitability_score >= 0.3  # Include marginal areas as candidates
+                HabitatZone.suitability_score >= 0.35
             )
         )
         zones = result.scalars().all()
@@ -80,50 +80,62 @@ class PriorityEngine:
         )
         corridors = corridor_result.scalars().all()
 
-        # Pre-parse zone geometries once to avoid millions of redundant shapely conversions
+        # Pre-parse zone geometries once
         parsed_zones = []
         for zone in zones:
             try:
-                z_shape = shape(zone.geometry) if isinstance(zone.geometry, dict) else None
-                if z_shape:
-                    parsed_zones.append((zone, z_shape, z_shape.centroid))
+                geom = zone.geometry
+                if isinstance(geom, dict) and geom.get("coordinates"):
+                    coords = geom["coordinates"][0]
+                    # Direct centroid calculation without shapely overhead for speed
+                    cx = sum(p[0] for p in coords) / len(coords)
+                    cy = sum(p[1] for p in coords) / len(coords)
+                    parsed_zones.append((zone, geom, cx, cy))
             except Exception:
                 continue
 
         candidate_zone_ids = set()
         candidates = []
 
-        # Strategy 1: Zones near corridor midpoints (high connectivity potential)
-        for corridor in corridors:
-            try:
-                corridor_shape = shape(corridor.geometry) if isinstance(corridor.geometry, dict) else None
-                if not corridor_shape:
-                    continue
-                midpoint = corridor_shape.interpolate(0.5, normalized=True)
+        # Build KDTree for sub-millisecond spatial neighborhood queries
+        from scipy.spatial import cKDTree
+        if parsed_zones:
+            zone_coords = np.array([[cx, cy] for _, _, cx, cy in parsed_zones])
+            tree = cKDTree(zone_coords)
 
-                for zone, zone_shape, centroid in parsed_zones:
-                    if zone.id in candidate_zone_ids:
+            # Strategy 1: Zones near corridor midpoints (high connectivity potential)
+            for corridor in corridors:
+                try:
+                    c_geom = corridor.geometry
+                    if not isinstance(c_geom, dict) or not c_geom.get("coordinates"):
                         continue
-                    dist = midpoint.distance(centroid)
-                    if dist < 0.1:  # Within ~11km
+                    coords = c_geom["coordinates"]
+                    mid_idx = len(coords) // 2
+                    mx, my = coords[mid_idx][0], coords[mid_idx][1]
+                    neighbor_indices = tree.query_ball_point([mx, my], r=0.1)
+
+                    for idx in neighbor_indices:
+                        zone, geom, _, _ = parsed_zones[idx]
+                        if zone.id in candidate_zone_ids:
+                            continue
                         candidate_zone_ids.add(zone.id)
                         candidates.append({
                             "zone": zone,
-                            "geometry": zone_shape,
+                            "geometry": geom,
                             "corridor_connectivity": corridor.connectivity_score or 0,
                             "corridor_resistance": corridor.resistance_score or 0,
                             "near_corridor": True,
                         })
-            except Exception:
-                continue
+                except Exception:
+                    continue
 
         # Strategy 2: High-suitability zones that are fragmented
-        for zone, zone_shape, centroid in parsed_zones:
-            if zone.id not in candidate_zone_ids and zone.suitability_score >= 0.45 and zone.fragmentation_level in ("medium", "high"):
+        for zone, geom, cx, cy in parsed_zones:
+            if zone.id not in candidate_zone_ids and (zone.suitability_score or 0) >= 0.45 and zone.fragmentation_level in ("medium", "high"):
                 candidate_zone_ids.add(zone.id)
                 candidates.append({
                     "zone": zone,
-                    "geometry": zone_shape,
+                    "geometry": geom,
                     "corridor_connectivity": 0,
                     "corridor_resistance": 50,
                     "near_corridor": False,
@@ -132,12 +144,12 @@ class PriorityEngine:
         # Strategy 3: Top core habitat zones (if fewer than 20 candidates selected)
         if len(candidates) < 20:
             sorted_zones = sorted(parsed_zones, key=lambda p: p[0].suitability_score or 0, reverse=True)
-            for zone, zone_shape, centroid in sorted_zones:
+            for zone, geom, cx, cy in sorted_zones:
                 if zone.id not in candidate_zone_ids:
                     candidate_zone_ids.add(zone.id)
                     candidates.append({
                         "zone": zone,
-                        "geometry": zone_shape,
+                        "geometry": geom,
                         "corridor_connectivity": 0,
                         "corridor_resistance": 40,
                         "near_corridor": False,

@@ -46,6 +46,40 @@ async def run_full_analysis(
 
             logger.info(f"Starting {analysis_type} analysis for project {project_id}")
 
+            # Check if project already has pre-computed habitat zones & corridors
+            from app.models import HabitatZone, Corridor, PriorityZone
+            from sqlalchemy import func
+            res_hz = await db.execute(select(func.count()).where(HabitatZone.project_id == project_id))
+            hz_count = res_hz.scalar() or 0
+            res_co = await db.execute(select(func.count()).where(Corridor.project_id == project_id))
+            co_count = res_co.scalar() or 0
+
+            if hz_count > 0 and co_count > 0:
+                logger.info(f"Fast-path analysis for pre-computed project {project_id} ({hz_count} zones, {co_count} corridors)")
+                await _update_progress(db, job_id, 75, "Recalculating priority rankings...")
+                from app.engines.priority_engine import PriorityEngine
+                engine = PriorityEngine(project_id, db)
+                await engine.run()
+                await db.commit()
+
+                await db.execute(
+                    update(AnalysisJob)
+                    .where(AnalysisJob.id == job_id)
+                    .values(
+                        status=JobStatus.COMPLETED,
+                        progress=100,
+                        completed_at=datetime.now(timezone.utc)
+                    )
+                )
+                await db.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(status="completed")
+                )
+                await db.commit()
+                logger.info(f"Fast-path analysis completed for project {project_id}")
+                return
+
             if analysis_type in ("habitat", "full"):
                 await _update_progress(db, job_id, 10, "Running habitat suitability...")
                 from app.engines.habitat_engine import HabitatEngine
