@@ -1,1 +1,57 @@
-# WildLink AI — Schemas Package
+"""
+WildLink AI — Schemas Package
+Exports Pydantic request/response validation schemas for all platform endpoints.
+"""
+from app.schemas.schemas import (
+    ApiResponse,
+    ApiError,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    SpeciesCreate,
+    SpeciesResponse,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectDetail,
+    ObservationCreate,
+    ObservationResponse,
+    AnalysisRequest,
+    AnalysisJobResponse,
+    HabitatZoneResponse,
+    CorridorResponse,
+    PriorityZoneResponse,
+    SimulationCreate,
+    SimulationResponse,
+    ScenarioComparison,
+    GeoJSONFeature,
+    GeoJSONFeatureCollection,
+    DashboardStats,
+)
+
+__all__ = [
+    "ApiResponse",
+    "ApiError",
+    "UserCreate",
+    "UserLogin",
+    "UserResponse",
+    "TokenResponse",
+    "SpeciesCreate",
+    "SpeciesResponse",
+    "ProjectCreate",
+    "ProjectResponse",
+    "ProjectDetail",
+    "ObservationCreate",
+    "ObservationResponse",
+    "AnalysisRequest",
+    "AnalysisJobResponse",
+    "HabitatZoneResponse",
+    "CorridorResponse",
+    "PriorityZoneResponse",
+    "SimulationCreate",
+    "SimulationResponse",
+    "ScenarioComparison",
+    "GeoJSONFeature",
+    "GeoJSONFeatureCollection",
+    "DashboardStats",
+]
