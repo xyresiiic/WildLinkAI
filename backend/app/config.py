@@ -6,6 +6,25 @@ from typing import List
 import os
 
 
+def _get_db_path() -> str:
+    """Resolve database path, ensuring writable /tmp directory on Vercel / serverless."""
+    is_serverless = os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(".", os.W_OK)
+    if is_serverless:
+        tmp_db = "/tmp/wildlink.db"
+        # If repo has a pre-seeded wildlink.db, copy it to /tmp on first boot
+        repo_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "wildlink.db"))
+        alt_repo_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wildlink.db"))
+        src_db = repo_db if os.path.exists(repo_db) else (alt_repo_db if os.path.exists(alt_repo_db) else None)
+        if src_db and not os.path.exists(tmp_db):
+            try:
+                import shutil
+                shutil.copy2(src_db, tmp_db)
+            except Exception:
+                pass
+        return tmp_db
+    return "./wildlink.db"
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -16,8 +35,8 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./wildlink.db"
-    DATABASE_URL_SYNC: str = "sqlite:///./wildlink.db"
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{_get_db_path()}"
+    DATABASE_URL_SYNC: str = f"sqlite:///{_get_db_path()}"
 
     # Security
     JWT_SECRET: str = "dev-secret-key-not-for-production"

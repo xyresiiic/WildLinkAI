@@ -61,6 +61,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_serverless_db_ready = False
+
+@app.middleware("http")
+async def ensure_serverless_db_ready(request, call_next):
+    """Ensure database tables and species catalog exist even in serverless cold starts."""
+    global _serverless_db_ready
+    if not _serverless_db_ready:
+        try:
+            await init_db()
+            await _seed_demo_data()
+            _serverless_db_ready = True
+        except Exception as e:
+            logger.warning(f"Serverless DB on-demand init: {e}")
+    return await call_next(request)
+
 # Register API routers
 app.include_router(species_router, prefix=settings.API_V1_PREFIX)
 app.include_router(projects_router, prefix=settings.API_V1_PREFIX)

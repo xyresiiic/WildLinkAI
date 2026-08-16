@@ -13,6 +13,20 @@ const api = axios.create({
   timeout: 120000,
 });
 
+// Automatic retry for serverless cold-start delays
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    if (config && !config.__isRetry && (error.response?.status >= 500 || !error.response)) {
+      config.__isRetry = true;
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return api(config);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ────────────── Species ──────────────
 export const getSpecies = () => api.get('/species');
 export const getSpeciesById = (id) => api.get(`/species/${id}`);
