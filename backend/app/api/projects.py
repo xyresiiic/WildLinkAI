@@ -136,6 +136,7 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{project_id}/dashboard", response_model=None)
+@router.get("/dashboard/{project_id}", response_model=None)
 async def get_dashboard(project_id: str, db: AsyncSession = Depends(get_db)):
     """Get dashboard statistics for a project."""
     result = await db.execute(

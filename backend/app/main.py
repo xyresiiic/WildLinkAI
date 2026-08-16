@@ -75,6 +75,7 @@ async def root():
 
 
 @app.get("/health", tags=["Health"])
+@app.get(f"{settings.API_V1_PREFIX}/health", tags=["Health"])
 async def health_check():
     """Detailed health check."""
     return {
