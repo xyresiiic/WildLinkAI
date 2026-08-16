@@ -40,16 +40,23 @@ async def create_simulation(
     await db.commit()
     await db.refresh(sim)
 
-    # Queue background simulation
-    background_tasks.add_task(
-        run_simulation,
-        str(sim.id),
-        str(data.project_id),
-    )
+    # On serverless (Vercel/Lambda), execute directly to avoid container freeze
+    import os
+    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+    if is_serverless:
+        await run_simulation(str(sim.id), str(data.project_id))
+        res = await db.execute(select(Simulation).where(Simulation.id == sim.id))
+        sim = res.scalar_one_or_none() or sim
+    else:
+        background_tasks.add_task(
+            run_simulation,
+            str(sim.id),
+            str(data.project_id),
+        )
 
     return success_response(
         data=SimulationResponse.model_validate(sim).model_dump(mode="json"),
-        message="Simulation queued"
+        message=f"Simulation {'completed' if is_serverless else 'queued'}"
     )
 
 

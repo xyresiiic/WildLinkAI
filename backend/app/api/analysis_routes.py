@@ -48,18 +48,30 @@ async def trigger_analysis(
     await db.commit()
     await db.refresh(job)
 
-    # Queue background analysis
-    background_tasks.add_task(
-        run_full_analysis,
-        str(job.id),
-        str(data.project_id),
-        data.type,
-        data.parameters or {}
-    )
+    # On serverless (Vercel/Lambda), execute directly to avoid container freeze
+    import os
+    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+    if is_serverless:
+        await run_full_analysis(
+            str(job.id),
+            str(data.project_id),
+            data.type,
+            data.parameters or {}
+        )
+        res = await db.execute(select(AnalysisJob).where(AnalysisJob.id == job.id))
+        job = res.scalar_one_or_none() or job
+    else:
+        background_tasks.add_task(
+            run_full_analysis,
+            str(job.id),
+            str(data.project_id),
+            data.type,
+            data.parameters or {}
+        )
 
     return success_response(
         data=AnalysisJobResponse.model_validate(job).model_dump(mode="json"),
-        message=f"Analysis '{data.type}' queued for project"
+        message=f"Analysis '{data.type}' {'completed' if is_serverless else 'queued'} for project"
     )
 
 

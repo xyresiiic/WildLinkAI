@@ -313,9 +313,15 @@ function App() {
         type: 'full',
       });
 
-      const jobId = res.data.data?.id;
-      if (jobId) {
-        pollJobStatus(jobId);
+      const job = res.data.data;
+      if (job?.status === 'completed') {
+        setAnalysisProgress(100);
+        setAnalysisStatus('completed');
+        addToast('Analysis complete! Rendering results...', 'success');
+        await loadAnalysisResultsForProject(project.id);
+        loadProjects();
+      } else if (job?.id) {
+        pollJobStatus(job.id, project.id);
       } else {
         throw new Error('No job ID returned');
       }
@@ -326,7 +332,7 @@ function App() {
     }
   };
 
-  const pollJobStatus = (jobId) => {
+  const pollJobStatus = (jobId, projId) => {
     let consecutiveErrors = 0;
     const poll = setInterval(async () => {
       try {
@@ -340,7 +346,7 @@ function App() {
           clearInterval(poll);
           setAnalysisStatus('completed');
           addToast('Analysis complete! Rendering results...', 'success');
-          await loadAnalysisResults();
+          await loadAnalysisResultsForProject(projId);
           loadProjects();
         } else if (job.status === 'failed') {
           clearInterval(poll);
