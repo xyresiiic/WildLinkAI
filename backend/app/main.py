@@ -305,6 +305,27 @@ async def _seed_demo_data():
                         db.add(obs)
                 logger.info(f"📍 Updated observations for {existing_sp.common_name} in {region_name}")
 
+        # Ensure active projects exist for all authentic species
+        from app.models import Project, ProjectStatus
+        for sp_data in species_data:
+            res_sp = await db.execute(select(Species).where(Species.scientific_name == sp_data["scientific_name"]))
+            sp = res_sp.scalar_one_or_none()
+            if sp:
+                res_proj = await db.execute(select(Project).where(Project.species_id == sp.id).limit(1))
+                proj = res_proj.scalar_one_or_none()
+                if not proj:
+                    proj = Project(
+                        name=f"{sp.common_name} Corridor & Habitat Prioritization",
+                        description=f"Automated landscape connectivity modeling and priority ranking for {sp.common_name} across {sp_data.get('region_name', 'Study Region')}.",
+                        region_name=sp_data.get("region_name", "Study Region"),
+                        species_id=sp.id,
+                        created_by="00000000-0000-0000-0000-000000000001",
+                        status=ProjectStatus.COMPLETED,
+                    )
+                    db.add(proj)
+                    await db.flush()
+                    logger.info(f"➕ Pre-seeded project for {sp.common_name}")
+
         await db.commit()
         logger.info("✅ Authentic multi-species regional dataset loaded!")
 

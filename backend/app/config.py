@@ -67,7 +67,7 @@ class Settings(BaseSettings):
 
     # Analysis defaults
     HABITAT_SUITABILITY_THRESHOLD: float = 0.5
-    DEFAULT_GRID_RESOLUTION: float = 0.045  # degrees (~5.0km) for optimal analysis & interactive speed
+    DEFAULT_GRID_RESOLUTION: float = 0.08  # degrees (~8.5km) for sub-2s high-throughput serverless modeling
 
     # Priority weights (configurable)
     WEIGHT_HABITAT: float = 0.25
