@@ -320,13 +320,25 @@ async def _seed_demo_data():
                         region_name=sp_data.get("region_name", "Study Region"),
                         species_id=sp.id,
                         created_by="00000000-0000-0000-0000-000000000001",
-                        status=ProjectStatus.COMPLETED,
+                        status=ProjectStatus.CREATED,
                     )
                     db.add(proj)
                     await db.flush()
                     logger.info(f"➕ Pre-seeded project for {sp.common_name}")
 
         await db.commit()
-        logger.info("✅ Authentic multi-species regional dataset loaded!")
+
+        # Pre-compute landscape models for any unanalyzed projects
+        from app.services.analysis_service import run_full_analysis
+        res_un = await db.execute(select(Project).where(Project.status != ProjectStatus.COMPLETED))
+        unanalyzed = res_un.scalars().all()
+        for p in unanalyzed:
+            try:
+                logger.info(f"[*] Pre-computing model for {p.name}...")
+                await run_full_analysis(f"seed-job-{p.id[:8]}", str(p.id), "full", {})
+            except Exception as e:
+                logger.warning(f"Pre-compute error for {p.name}: {e}")
+
+        logger.info("✅ Authentic multi-species regional dataset & models loaded!")
 
 
