@@ -2,7 +2,7 @@
 WildLink AI — Data Models Package
 Exports all SQLAlchemy ORM models and enumerations for the platform.
 """
-from app.models.models import (
+from app.models.conservation_models import (
     Base,
     User,
     Species,

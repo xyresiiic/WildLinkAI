@@ -2,7 +2,7 @@
 WildLink AI — Utility Helpers
 """
 from typing import Any, Dict, Optional
-from app.schemas.schemas import ApiResponse, ApiError
+from app.schemas import ApiResponse, ApiError
 
 
 def success_response(data: Any = None, message: str = "Success") -> dict:

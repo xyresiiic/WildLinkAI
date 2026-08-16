@@ -6,8 +6,8 @@ Runs What-If conservation simulations as background tasks.
 import logging
 from datetime import datetime, timezone
 from sqlalchemy import select, update
-from app.database.connection import AsyncSessionLocal
-from app.models.models import Simulation, JobStatus
+from app.database import AsyncSessionLocal
+from app.models import Simulation, JobStatus
 
 logger = logging.getLogger("wildlink.simulation")
 

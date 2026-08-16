@@ -11,8 +11,8 @@ from scipy import ndimage
 from shapely.geometry import box, MultiPolygon, mapping
 from shapely.ops import unary_union
 from sqlalchemy import select, update, delete
-from app.models.models import HabitatZone
-from app.core.config import settings
+from app.models import HabitatZone
+from app.core import settings
 
 logger = logging.getLogger("wildlink.fragmentation")
 

@@ -6,13 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from typing import List
-from app.database.connection import get_db
-from app.models.models import Project, Species, HabitatZone, Corridor, PriorityZone, Simulation, Observation
-from app.schemas.schemas import (
+from app.database import get_db
+from app.models import Project, Species, HabitatZone, Corridor, PriorityZone, Simulation, Observation
+from app.schemas import (
     ProjectCreate, ProjectResponse, ProjectDetail, DashboardStats,
     SpeciesResponse
 )
-from app.utils.helpers import success_response
+from app.utils import success_response
 import uuid
 
 router = APIRouter(prefix="/projects", tags=["Projects"])

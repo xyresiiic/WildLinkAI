@@ -12,8 +12,8 @@ from typing import Dict, List, Tuple
 from scipy import ndimage
 from shapely.geometry import LineString, shape, mapping
 from sqlalchemy import select, delete
-from app.models.models import HabitatZone, Corridor
-from app.core.config import settings
+from app.models import HabitatZone, Corridor
+from app.core import settings
 
 logger = logging.getLogger("wildlink.connectivity")
 

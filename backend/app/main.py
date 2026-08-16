@@ -5,9 +5,10 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.database.connection import init_db, close_db
-from app.api import species, projects, analysis, simulations
+from app.core import settings
+from app.database import init_db, close_db, AsyncSessionLocal
+from app.api import species_router, projects_router, analysis_router, simulations_router
+from app.models import Species, Project, Observation, Dataset
 
 # Configure logging
 logging.basicConfig(
@@ -57,10 +58,10 @@ app.add_middleware(
 )
 
 # Register API routers
-app.include_router(species.router, prefix=settings.API_V1_PREFIX)
-app.include_router(projects.router, prefix=settings.API_V1_PREFIX)
-app.include_router(analysis.router, prefix=settings.API_V1_PREFIX)
-app.include_router(simulations.router, prefix=settings.API_V1_PREFIX)
+app.include_router(species_router, prefix=settings.API_V1_PREFIX)
+app.include_router(projects_router, prefix=settings.API_V1_PREFIX)
+app.include_router(analysis_router, prefix=settings.API_V1_PREFIX)
+app.include_router(simulations_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/", tags=["Health"])
@@ -87,9 +88,9 @@ async def health_check():
 
 async def _seed_demo_data():
     """Seed the database with comprehensive species across categories and sample observations."""
-    from app.database.connection import AsyncSessionLocal
-    from app.models.models import User, Species, UserRole, Observation
-    from app.core.security import hash_password
+    from app.database import AsyncSessionLocal
+    from app.models import User, Species, UserRole, Observation
+    from app.core import hash_password
     from sqlalchemy import select
     from datetime import datetime, timezone
     import numpy as np

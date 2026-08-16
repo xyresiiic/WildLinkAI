@@ -8,8 +8,8 @@ import logging
 import numpy as np
 from typing import Dict, List, Optional
 from sqlalchemy import select, update
-from app.models.models import Simulation, Corridor, PriorityZone, HabitatZone
-from app.core.config import settings
+from app.models import Simulation, Corridor, PriorityZone, HabitatZone
+from app.core import settings
 
 logger = logging.getLogger("wildlink.simulation")
 

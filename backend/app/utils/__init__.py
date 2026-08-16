@@ -2,7 +2,7 @@
 WildLink AI — Utilities Package
 Provides response formatters and GeoJSON serialization helpers.
 """
-from app.utils.helpers import (
+from app.utils.geo_helpers import (
     success_response,
     error_response,
     geojson_point,

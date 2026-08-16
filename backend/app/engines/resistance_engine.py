@@ -7,7 +7,7 @@ difficulty of wildlife movement through different landscape types.
 import logging
 import numpy as np
 from typing import Dict, List
-from app.core.config import settings
+from app.core import settings
 
 logger = logging.getLogger("wildlink.resistance")
 
@@ -47,7 +47,7 @@ class ResistanceEngine:
 
         # Load project & species
         from sqlalchemy.orm import selectinload
-        from app.models.models import Project, HabitatZone
+        from app.models import Project, HabitatZone
         from sqlalchemy import select
 
         res = await self.db.execute(

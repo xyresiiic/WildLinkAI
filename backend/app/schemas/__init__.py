@@ -2,7 +2,7 @@
 WildLink AI — Schemas Package
 Exports Pydantic request/response validation schemas for all platform endpoints.
 """
-from app.schemas.schemas import (
+from app.schemas.conservation_schemas import (
     ApiResponse,
     ApiError,
     UserCreate,

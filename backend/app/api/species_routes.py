@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from app.database.connection import get_db
-from app.models.models import Species
-from app.schemas.schemas import SpeciesResponse, SpeciesCreate
-from app.utils.helpers import success_response, error_response
+from app.database import get_db
+from app.models import Species
+from app.schemas import SpeciesResponse, SpeciesCreate
+from app.utils import success_response, error_response
 
 router = APIRouter(prefix="/species", tags=["Species"])
 

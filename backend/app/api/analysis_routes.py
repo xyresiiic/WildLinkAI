@@ -8,17 +8,17 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from app.database.connection import get_db
-from app.models.models import (
+from app.database import get_db
+from app.models import (
     Project, AnalysisJob, JobStatus, HabitatZone, Corridor, PriorityZone, Observation
 )
-from app.schemas.schemas import (
+from app.schemas import (
     AnalysisRequest, AnalysisJobResponse,
     HabitatZoneResponse, CorridorResponse, PriorityZoneResponse,
     ObservationResponse, GeoJSONFeatureCollection
 )
-from app.utils.helpers import success_response
-from app.services.analysis_service import run_full_analysis
+from app.utils import success_response
+from app.services import run_full_analysis
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/analysis", tags=["Analysis"])

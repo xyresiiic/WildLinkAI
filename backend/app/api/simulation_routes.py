@@ -4,11 +4,11 @@ WildLink AI — Simulation API Routes
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.database.connection import get_db
-from app.models.models import Simulation, Project, JobStatus
-from app.schemas.schemas import SimulationCreate, SimulationResponse, ScenarioComparison
-from app.utils.helpers import success_response
-from app.services.simulation_service import run_simulation
+from app.database import get_db
+from app.models import Simulation, Project, JobStatus
+from app.schemas import SimulationCreate, SimulationResponse, ScenarioComparison
+from app.utils import success_response
+from app.services import run_simulation
 
 router = APIRouter(prefix="/simulations", tags=["Simulations"])
 
