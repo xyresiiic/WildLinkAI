@@ -208,27 +208,75 @@ function SimulationPanel({ project, priorityZones, onClose }) {
           />
         </div>
 
+        {/* Quick Selection Presets */}
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
+            Optimization Presets
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => selectTopZones(1)}
+              style={{
+                padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                fontSize: '0.72rem', fontWeight: 600,
+                border: '1px solid var(--color-border)',
+                background: selectedZones.length === 1 ? 'var(--color-primary-glow)' : 'var(--color-bg-card)',
+                color: selectedZones.length === 1 ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              🏆 Top #1 Zone
+            </button>
+            <button
+              type="button"
+              onClick={() => selectTopZones(3)}
+              style={{
+                padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                fontSize: '0.72rem', fontWeight: 600,
+                border: '1px solid var(--color-border)',
+                background: selectedZones.length === 3 ? 'var(--color-primary-glow)' : 'var(--color-bg-card)',
+                color: selectedZones.length === 3 ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              ⚡ Top 3 Critical
+            </button>
+            <button
+              type="button"
+              onClick={() => selectTopZones(5)}
+              style={{
+                padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                fontSize: '0.72rem', fontWeight: 600,
+                border: '1px solid var(--color-border)',
+                background: selectedZones.length === 5 ? 'var(--color-primary-glow)' : 'var(--color-bg-card)',
+                color: selectedZones.length === 5 ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              🌿 Top 5 Network
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedZones([])}
+              style={{
+                padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                fontSize: '0.72rem', fontWeight: 500,
+                border: '1px solid transparent',
+                background: 'transparent',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
         {/* Target Zones Checkbox List */}
         <div className="form-group">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <label className="form-label" style={{ marginBottom: 0 }}>Target Intervention Zones</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                type="button"
-                onClick={() => selectTopZones(3)}
-                style={{ background: 'none', border: 'none', color: 'var(--color-primary-light)', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Top 3
-              </button>
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.72rem' }}>•</span>
-              <button
-                type="button"
-                onClick={() => setSelectedZones([])}
-                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.72rem', cursor: 'pointer' }}
-              >
-                Clear
-              </button>
-            </div>
+            <label className="form-label" style={{ marginBottom: 0 }}>Selected Zones ({selectedZones.length})</label>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
@@ -244,6 +292,7 @@ function SimulationPanel({ project, priorityZones, onClose }) {
                   borderColor: selectedZones.includes(zone.id)
                     ? 'var(--color-primary)' : 'var(--color-border)',
                   padding: '6px 10px',
+                  cursor: 'pointer',
                 }}
               >
                 <input
@@ -311,12 +360,14 @@ function SimulationPanel({ project, priorityZones, onClose }) {
                 const improvement = scenario.improvement || 0;
                 const pctChange = scenario.percentage_change || 0;
                 const isPositive = improvement > 0;
+                const baseVal = baseline || 40;
+                const simVal = scenario.simulated_connectivity || baseVal;
 
                 return (
                   <div key={scenario.id || idx} className="scenario-card" style={{
                     borderLeft: `3px solid ${isPositive ? 'var(--color-primary)' : 'var(--color-border)'}`
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                       <div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
                           Scenario {idx + 1}
@@ -330,7 +381,7 @@ function SimulationPanel({ project, priorityZones, onClose }) {
                           fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.35rem',
                           color: 'var(--color-text-primary)'
                         }}>
-                          {scenario.simulated_connectivity?.toFixed(1)}
+                          {simVal.toFixed(1)}
                         </div>
                         <div className={`scenario-delta ${isPositive ? 'positive' : 'negative'}`}
                           style={{ fontSize: '0.82rem', fontWeight: 700 }}>
@@ -340,10 +391,25 @@ function SimulationPanel({ project, priorityZones, onClose }) {
                       </div>
                     </div>
 
+                    {/* Visual Comparison Progress Bar */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>
+                        <span>Baseline: {baseVal.toFixed(1)}</span>
+                        <span style={{ color: 'var(--color-primary-light)', fontWeight: 600 }}>Simulated: {simVal.toFixed(1)}</span>
+                      </div>
+                      <div style={{ height: 6, width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+                        <div style={{
+                          height: '100%', width: `${Math.min(100, (simVal / 100) * 100)}%`,
+                          background: 'linear-gradient(90deg, #22c55e, #14b8a6)',
+                          borderRadius: 3, transition: 'width 0.6s ease',
+                        }} />
+                      </div>
+                    </div>
+
                     {/* Recommendation Narrative */}
                     {scenario.result?.recommendation && (
                       <div style={{
-                        marginTop: '10px', fontSize: '0.78rem', color: 'var(--color-text-secondary)',
+                        marginTop: '8px', fontSize: '0.78rem', color: 'var(--color-text-secondary)',
                         lineHeight: 1.5, borderTop: '1px solid var(--color-border)',
                         paddingTop: '8px',
                       }}>

@@ -400,6 +400,34 @@ function App() {
     }));
   };
 
+  // ────────── Global Keyboard Shortcuts ──────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if user is typing in an input or textarea
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      if (e.key === 'Escape') {
+        if (selectedZone) setSelectedZone(null);
+        if (showSimulation) setShowSimulation(false);
+      } else if ((e.key === 's' || e.key === 'S') && project) {
+        setShowSimulation(prev => !prev);
+      } else if ((e.key === 'e' || e.key === 'E') && project) {
+        handleExportData();
+      } else if (e.key === '1') {
+        toggleLayer('observations');
+      } else if (e.key === '2') {
+        toggleLayer('habitat');
+      } else if (e.key === '3') {
+        toggleLayer('corridors');
+      } else if (e.key === '4') {
+        toggleLayer('priority');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [project, selectedZone, showSimulation, handleExportData]);
+
   // ────────── Zone Selection & Map Focusing ──────────
   const handleZoneClick = (zone) => {
     setSelectedZone(zone);
@@ -424,9 +452,12 @@ function App() {
           species={selectedSpecies}
           analysisStatus={analysisStatus}
           projectsList={projectsList}
+          activeTab={activeTab}
           onSelectProject={handleSelectProject}
           onNewAnalysis={handleNewAnalysis}
           onExportData={handleExportData}
+          onTabChange={setActiveTab}
+          onOpenSimulation={() => setShowSimulation(true)}
         />
 
         <div className="app-main">
@@ -454,6 +485,7 @@ function App() {
               layers={layers}
               onZoneClick={handleZoneClick}
               focusCoords={focusCoords}
+              onOpenSimulation={() => setShowSimulation(true)}
             />
           </div>
         </div>

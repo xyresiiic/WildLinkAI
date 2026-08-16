@@ -244,10 +244,54 @@ function ConservationMap({ layers, onZoneClick, focusCoords }) {
         position: 'absolute', top: 16, right: 16, zIndex: 1000,
         display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end',
       }}>
-        {/* Basemap Switcher Button */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Zoom to Landscape Fit Button */}
           <button
-            onClick={() => setShowBasemapMenu(prev => !prev)}
+            onClick={() => {
+              const obsFeatures = layers.observations?.data?.features || [];
+              const pzFeatures = layers.priority?.data?.features || [];
+              const habFeatures = layers.habitat?.data?.features || [];
+              const allLats = [];
+              const allLngs = [];
+
+              if (obsFeatures.length > 0) {
+                obsFeatures.forEach(f => {
+                  if (f.geometry?.coordinates) {
+                    allLngs.push(f.geometry.coordinates[0]);
+                    allLats.push(f.geometry.coordinates[1]);
+                  }
+                });
+              } else if (pzFeatures.length > 0 || habFeatures.length > 0) {
+                const src = pzFeatures.length > 0 ? pzFeatures : habFeatures.slice(0, 30);
+                src.forEach(f => {
+                  if (f.geometry?.coordinates) {
+                    const ring = f.geometry.coordinates[0];
+                    if (Array.isArray(ring)) {
+                      ring.forEach(pt => {
+                        if (Array.isArray(pt)) {
+                          allLngs.push(pt[0]);
+                          allLats.push(pt[1]);
+                        }
+                      });
+                    }
+                  }
+                });
+              }
+
+              if (allLats.length > 0 && allLngs.length > 0) {
+                const minLat = Math.min(...allLats);
+                const maxLat = Math.max(...allLats);
+                const minLng = Math.min(...allLngs);
+                const maxLng = Math.max(...allLngs);
+                const mapEl = document.querySelector('.leaflet-container');
+                if (mapEl && mapEl._leaflet_map) {
+                  mapEl._leaflet_map.flyToBounds(
+                    [[minLat - 0.2, minLng - 0.2], [maxLat + 0.2, maxLng + 0.2]],
+                    { padding: [30, 30], duration: 1.2 }
+                  );
+                }
+              }
+            }}
             className="btn btn-secondary btn-sm"
             style={{
               background: 'rgba(17, 26, 22, 0.85)',
@@ -256,45 +300,64 @@ function ConservationMap({ layers, onZoneClick, focusCoords }) {
               display: 'flex', alignItems: 'center', gap: 6,
               boxShadow: 'var(--shadow-md)',
             }}
-            title="Switch Basemap Style"
+            title="Reset view to whole study area"
           >
-            <Layers size={14} color="var(--color-primary-light)" />
-            <span style={{ fontSize: '0.78rem' }}>{currentBasemap.name}</span>
+            <Mountain size={14} color="var(--color-primary-light)" />
+            <span style={{ fontSize: '0.78rem' }}>Fit Study Area</span>
           </button>
 
-          {showBasemapMenu && (
-            <div style={{
-              position: 'absolute', top: '100%', right: 0, marginTop: 6,
-              background: 'var(--color-bg-secondary)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: 6, display: 'flex', flexDirection: 'column', gap: 4,
-              minWidth: 150, boxShadow: 'var(--shadow-lg)',
-              zIndex: 1100,
-            }}>
-              {Object.entries(BASEMAPS).map(([key, config]) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setBasemapKey(key);
-                    setShowBasemapMenu(false);
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '6px 10px', borderRadius: 'var(--radius-sm)',
-                    background: basemapKey === key ? 'var(--color-primary-glow)' : 'transparent',
-                    border: 'none', color: basemapKey === key ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
-                    cursor: 'pointer', fontSize: '0.78rem', textAlign: 'left',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {config.icon}
-                  <span>{config.name}</span>
-                  {basemapKey === key && <span style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>✓</span>}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Basemap Switcher Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowBasemapMenu(prev => !prev)}
+              className="btn btn-secondary btn-sm"
+              style={{
+                background: 'rgba(17, 26, 22, 0.85)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid var(--color-border)',
+                display: 'flex', alignItems: 'center', gap: 6,
+                boxShadow: 'var(--shadow-md)',
+              }}
+              title="Switch Basemap Style"
+            >
+              <Layers size={14} color="var(--color-primary-light)" />
+              <span style={{ fontSize: '0.78rem' }}>{currentBasemap.name}</span>
+            </button>
+
+            {showBasemapMenu && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                background: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: 6, display: 'flex', flexDirection: 'column', gap: 4,
+                minWidth: 150, boxShadow: 'var(--shadow-lg)',
+                zIndex: 1100,
+              }}>
+                {Object.entries(BASEMAPS).map(([key, config]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setBasemapKey(key);
+                      setShowBasemapMenu(false);
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 10px', borderRadius: 'var(--radius-sm)',
+                      background: basemapKey === key ? 'var(--color-primary-glow)' : 'transparent',
+                      border: 'none', color: basemapKey === key ? 'var(--color-primary-light)' : 'var(--color-text-secondary)',
+                      cursor: 'pointer', fontSize: '0.78rem', textAlign: 'left',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {config.icon}
+                    <span>{config.name}</span>
+                    {basemapKey === key && <span style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Habitat Opacity Quick Slider */}
@@ -318,6 +381,36 @@ function ConservationMap({ layers, onZoneClick, focusCoords }) {
               style={{ width: 70, cursor: 'pointer', accentColor: 'var(--color-primary)' }}
             />
           </div>
+        )}
+      </div>
+
+      {/* Floating Layer Feature Counters HUD at Bottom Right */}
+      <div style={{
+        position: 'absolute', bottom: 16, right: 16, zIndex: 1000,
+        display: 'flex', gap: 6, alignItems: 'center',
+        background: 'rgba(17, 26, 22, 0.85)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-full)',
+        padding: '4px 10px',
+        boxShadow: 'var(--shadow-md)',
+        fontSize: '0.72rem',
+        color: 'var(--color-text-secondary)',
+      }}>
+        {layers.observations?.data?.features?.length > 0 && (
+          <span style={{ color: '#fbbf24' }}>
+            📍 {layers.observations.data.features.length} Obs
+          </span>
+        )}
+        {layers.corridors?.data?.features?.length > 0 && (
+          <span style={{ color: '#60a5fa', borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: 6 }}>
+            🔗 {layers.corridors.data.features.length} Corridors
+          </span>
+        )}
+        {layers.priority?.data?.features?.length > 0 && (
+          <span style={{ color: '#f87171', borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: 6 }}>
+            🎯 {layers.priority.data.features.length} Priority Zones
+          </span>
         )}
       </div>
     </div>

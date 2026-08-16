@@ -1,17 +1,23 @@
 /**
- * WildLink AI — Header Component
+ * WildLink AI — Header Component with Decision Pipeline Stepper
  */
 import { useState } from 'react';
-import { TreePine, Download, PlusCircle, FolderOpen, ChevronDown } from 'lucide-react';
+import {
+  TreePine, Download, PlusCircle, FolderOpen,
+  ChevronDown, Eye, Activity, GitFork, Target, BarChart3, FileSpreadsheet
+} from 'lucide-react';
 
 function Header({
   project,
   species,
   analysisStatus,
   projectsList = [],
+  activeTab,
   onSelectProject,
   onNewAnalysis,
   onExportData,
+  onTabChange,
+  onOpenSimulation,
 }) {
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);
 
@@ -24,11 +30,21 @@ function Header({
 
   const { label, dotClass } = statusConfig[analysisStatus] || statusConfig.idle;
 
+  // Decision Pipeline Steps
+  const pipelineSteps = [
+    { id: 'observe', label: '1. Observe', icon: <Eye size={12} />, action: () => onTabChange && onTabChange('layers') },
+    { id: 'analyze', label: '2. Analyze', icon: <Activity size={12} />, action: () => onTabChange && onTabChange('analysis') },
+    { id: 'connect', label: '3. Connect', icon: <GitFork size={12} />, action: () => onTabChange && onTabChange('layers') },
+    { id: 'prioritize', label: '4. Prioritize', icon: <Target size={12} />, action: () => onTabChange && onTabChange('priority') },
+    { id: 'simulate', label: '5. Simulate', icon: <BarChart3 size={12} />, action: () => onOpenSimulation && onOpenSimulation() },
+    { id: 'decide', label: '6. Decide', icon: <FileSpreadsheet size={12} />, action: () => onExportData && onExportData() },
+  ];
+
   return (
     <header className="app-header">
-      {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        <div className="logo" style={{ cursor: 'pointer' }} onClick={onNewAnalysis}>
+      {/* Brand & Project Selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="logo" style={{ cursor: 'pointer' }} onClick={onNewAnalysis} title="WildLink AI Decision Support System">
           <div className="logo-icon">
             <TreePine size={18} color="white" />
           </div>
@@ -47,7 +63,7 @@ function Header({
             }}
           >
             <FolderOpen size={14} color="var(--color-primary-light)" />
-            <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {project ? project.name : 'Select Project'}
             </span>
             <ChevronDown size={13} style={{ opacity: 0.6 }} />
@@ -64,7 +80,7 @@ function Header({
               boxShadow: 'var(--shadow-lg)', zIndex: 1200,
             }}>
               <div style={{ padding: '6px 8px', fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Existing Projects ({projectsList.length})
+                Active Projects ({projectsList.length})
               </div>
 
               {projectsList.length === 0 ? (
@@ -119,23 +135,53 @@ function Header({
         </div>
       </div>
 
-      {/* Center/Right Section */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* Center: Decision Pipeline Stepper */}
+      {project && (
+        <div className="decision-stepper hide-on-mobile">
+          {pipelineSteps.map((step) => {
+            const isPrioritize = step.id === 'prioritize' && activeTab === 'priority';
+            const isAnalyze = step.id === 'analyze' && activeTab === 'analysis';
+            const isLayers = (step.id === 'observe' || step.id === 'connect') && activeTab === 'layers';
+            const isActive = isPrioritize || isAnalyze || isLayers;
+
+            return (
+              <button
+                key={step.id}
+                onClick={step.action}
+                className={`stepper-step ${isActive ? 'active' : ''}`}
+                title={`Workflow Step: ${step.label}`}
+              >
+                <span className="step-icon">{step.icon}</span>
+                <span className="step-label">{step.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Right Section: Actions & Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {project && (
           <>
             <button
-              onClick={onNewAnalysis}
+              onClick={onOpenSimulation}
               className="btn btn-secondary btn-sm"
-              title="Start a new analysis for another species"
+              title="Launch What-If Conservation Simulator [Shortcut: S]"
+              style={{
+                background: 'rgba(34, 197, 94, 0.12)',
+                borderColor: 'var(--color-primary)',
+                color: 'var(--color-primary-light)',
+                fontWeight: 600,
+              }}
             >
-              <PlusCircle size={14} />
-              <span>New Analysis</span>
+              <BarChart3 size={14} />
+              <span>What-If Simulator</span>
             </button>
 
             <button
               onClick={onExportData}
               className="btn btn-secondary btn-sm"
-              title="Export GeoJSON layers and conservation summary"
+              title="Export GeoJSON layers and conservation decision report [Shortcut: E]"
             >
               <Download size={14} />
               <span>Export Report</span>
