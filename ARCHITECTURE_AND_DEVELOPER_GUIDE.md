@@ -437,6 +437,11 @@ npm run dev
 - Web Application: `http://localhost:5173`
 - API Documentation: `http://127.0.0.1:8000/docs`
 
+### 8.3 Vercel Deployment Configuration
+WildLink AI includes root and frontend Vercel deployment manifests:
+- [vercel.json](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/vercel.json): Root configuration coordinating `@vercel/static-build` (React/Vite in `frontend/`) and `@vercel/python` (FastAPI in `api/index.py`).
+- [frontend/vercel.json](file:///d:/Projects/Hackathon%20Projects/WildLife%20AI/frontend/vercel.json): Single-page app (SPA) fallback rewrite rules when deploying directly from the `frontend/` directory.
+
 ---
 
 ## 9. Developer Extension Guide & Roadmap
