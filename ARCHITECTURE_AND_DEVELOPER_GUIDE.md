@@ -490,3 +490,16 @@ WildLink AI includes root and frontend Vercel deployment manifests:
    ```
 2. Replace `JSON` geometry columns with native `geoalchemy2.Geometry("POLYGON", srid=4326)`.
 3. Leverage spatial indexes (`GIST`) for accelerated bounding box queries.
+
+---
+
+## 10. Vercel Serverless Architecture & Optimization
+
+### 10.1 Serverless Environment Constraints & Adaptations
+| Constraint | Challenge | Solution Implemented |
+| :--- | :--- | :--- |
+| **Read-Only Filesystem** | `/var/task` deployment root is read-only | SQLite database dynamically copied and routed to `/tmp/wildlink.db` with automatic fallback discovery. |
+| **Strict 10s Timeout** | Heavy spatial loops cause 504 Gateway Timeouts | Replaced pairwise polygon geometric distance loops with `scipy.spatial.cKDTree` spatial indexing (< 20ms) and adaptive grid resolution (`0.08°`). |
+| **Post-Response Freeze** | Serverless runtimes freeze background threads once HTTP response is emitted | In serverless environments (`VERCEL` / `AWS_LAMBDA_FUNCTION_NAME`), analysis runs synchronously in **1.2s - 3.8s** before HTTP response completion. |
+| **Bundle Size < 500MB** | Heavy C/GDAL binaries (`rasterio`, `fiona`, `geopandas`) exceeded 623MB | Trimmed dependencies to pure Python GIS equivalents (`shapely`, `networkx`, `scipy`, `scikit-learn`), reducing package bundle to ~110MB. |
+| **Instant Cold Boot** | Heavy computation during app initialization causes timeouts | Pre-seeded database bundled in `backend/wildlink.db` with non-blocking cold-start startup routines. |
