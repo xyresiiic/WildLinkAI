@@ -26,18 +26,25 @@ Comprehensive technical documentation, architecture blueprint, mathematical algo
 ## 1. Executive Overview & Problem Domain
 
 ### 1.1 Purpose & Mission
-WildLink AI is an advanced agentic GIS platform designed to calculate, visualize, and simulate wildlife habitat corridors, landscape fragmentation, and spatial conservation priorities. The system focuses on the **Central Indian Highlands** (Kanha, Bandhavgarh, Panna, Pench, Satpura, and surrounding forested landscapes) across 7 flagship species representing diverse ecological niches and conservation statuses.
+WildLink AI is an advanced agentic GIS platform designed to calculate, visualize, and simulate wildlife habitat corridors, landscape fragmentation, and spatial conservation priorities across India's key biogeographic zones. Each species is modeled within its authentic geographic range:
+- **Western Himalayas**: Ladakh & Spiti Valley (Snow Leopard)
+- **North Indian River Basins**: National Chambal River Sanctuary (Gharial)
+- **Thar Desert**: Jaisalmer Semi-Arid Grasslands (Great Indian Bustard)
+- **Western Ghats**: Nilgiri Biosphere Elephant Corridor (Indian Elephant)
+- **Central Indian Highlands**: Kanha–Bandhavgarh–Pench Tiger Landscape (Bengal Tiger)
+- **Satpura & Aravalli**: Rocky Hill & Scrub Ecotones (Indian Leopard)
+- **Deccan Plateau**: Daroji Sloth Bear Sanctuary (Sloth Bear)
 
-### 1.2 Target Species Catalog
-| Species | Scientific Name | Conservation Status | Ecological Guild / Habitat Type |
-| :--- | :--- | :--- | :--- |
-| **Bengal Tiger** | *Panthera tigris tigris* | Endangered | Dense forest, ungulate prey zones, riparian valleys |
-| **Gharial** | *Gavialis gangeticus* | Critically Endangered | Aquatic river corridors, clean sandbanks, deep pools |
-| **Great Indian Bustard** | *Ardeotis nigriceps* | Critically Endangered | Open grasslands, semi-arid scrublands, flat terrain |
-| **Indian Elephant** | *Elephas maximus indicus* | Endangered | Mixed deciduous canopy, water bodies, contiguous corridors |
-| **Indian Leopard** | *Panthera pardus fusca* | Vulnerable | Forest edges, rocky outcrops, generalist scrub |
-| **Sloth Bear** | *Melursus ursinus* | Vulnerable | Rocky scrub, dry deciduous caves, termite-rich slopes |
-| **Snow Leopard** | *Panthera uncia* | Vulnerable | High-elevation steep ridgelines, alpine scrub |
+### 1.2 Target Species & Authentic Biogeographic Ranges
+| Species | Scientific Name | Conservation Status | Authentic Native Region in India | Key Protected Reserves & Coordinates |
+| :--- | :--- | :--- | :--- | :--- |
+| **Bengal Tiger** | *Panthera tigris tigris* | Endangered | Central Indian Highlands | Kanha `(22.33, 80.62)`, Bandhavgarh `(23.70, 81.03)`, Pench `(21.75, 79.35)` |
+| **Snow Leopard** | *Panthera uncia* | Vulnerable | Western Himalayas (Ladakh & Spiti) | Hemis NP `(33.95, 77.45)`, Kibber WLS `(32.33, 78.01)`, Pin Valley `(31.95, 77.85)` |
+| **Gharial** | *Gavialis gangeticus* | Critically Endangered | National Chambal River Sanctuary | Chambal-Morena `(26.65, 77.90)`, Sheopur `(26.45, 77.35)`, Etawah Confluence `(26.78, 79.03)` |
+| **Great Indian Bustard** | *Ardeotis nigriceps* | Critically Endangered | Thar Desert & Semi-Arid Grasslands | Desert NP `(26.85, 70.55)`, Sudasari `(26.75, 70.60)`, Ramdevra `(27.02, 71.95)` |
+| **Indian Elephant** | *Elephas maximus indicus* | Endangered | Western Ghats & Nilgiri Biosphere | Bandipur `(11.66, 76.62)`, Nagarhole `(11.95, 76.25)`, Wayanad `(11.70, 76.35)`, Mudumalai `(11.58, 76.55)` |
+| **Indian Leopard** | *Panthera pardus fusca* | Vulnerable | Satpura & Aravalli Rocky Landscape | Jawai Hills `(25.10, 73.15)`, Satpura Foothills `(22.55, 77.95)`, Kumbhalgarh `(25.15, 73.58)` |
+| **Sloth Bear** | *Melursus ursinus* | Vulnerable | Daroji & Deccan Boulder Plateau | Daroji Sloth Bear Sanctuary `(15.25, 76.60)`, Gudekote `(14.88, 76.65)`, Bori `(22.48, 78.02)` |
 
 ---
 

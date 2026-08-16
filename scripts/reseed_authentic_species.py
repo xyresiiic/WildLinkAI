@@ -218,29 +218,30 @@ async def main():
     print("=" * 70)
 
     import uuid
+
+    # 1. Fetch project list
     async with AsyncSessionLocal() as db:
-        # Get one representative project per species
         species_res = await db.execute(select(Species))
         all_species = species_res.scalars().all()
-
+        target_projects = []
         for sp in all_species:
             proj_res = await db.execute(select(Project).where(Project.species_id == sp.id).limit(1))
             proj = proj_res.scalar_one_or_none()
-            if not proj:
-                continue
+            if proj:
+                target_projects.append((sp.common_name, proj.id, proj.region_name))
 
-            print(f"\n[*] Running analysis for {sp.common_name} in {proj.region_name}...")
-            # Clean old analytical outputs
-            await db.execute(delete(HabitatZone).where(HabitatZone.project_id == proj.id))
-            await db.execute(delete(Corridor).where(Corridor.project_id == proj.id))
-            await db.execute(delete(PriorityZone).where(PriorityZone.project_id == proj.id))
-            await db.commit()
+    # 2. Run analysis for each target project with independent sessions
+    for sp_name, proj_id, reg_name in target_projects:
+        print(f"\n[*] Running analysis for {sp_name} in {reg_name}...")
 
-            # Create job
-            job_id = str(uuid.uuid4())
+        job_id = str(uuid.uuid4())
+        async with AsyncSessionLocal() as db:
+            await db.execute(delete(HabitatZone).where(HabitatZone.project_id == proj_id))
+            await db.execute(delete(Corridor).where(Corridor.project_id == proj_id))
+            await db.execute(delete(PriorityZone).where(PriorityZone.project_id == proj_id))
             job = AnalysisJob(
                 id=job_id,
-                project_id=proj.id,
+                project_id=proj_id,
                 type="full",
                 status=JobStatus.QUEUED,
                 progress=0,
@@ -248,13 +249,14 @@ async def main():
             db.add(job)
             await db.commit()
 
-            # Execute pipeline
-            await run_full_analysis(job_id, proj.id, "full", {})
+        # Run analysis (creates its own clean session inside run_full_analysis)
+        await run_full_analysis(job_id, proj_id, "full", {})
 
-            # Check counts
-            zones_cnt = (await db.execute(select(HabitatZone).where(HabitatZone.project_id == proj.id))).scalars().all()
-            corr_cnt = (await db.execute(select(Corridor).where(Corridor.project_id == proj.id))).scalars().all()
-            pz_cnt = (await db.execute(select(PriorityZone).where(PriorityZone.project_id == proj.id))).scalars().all()
+        # Verify results in fresh read session
+        async with AsyncSessionLocal() as db:
+            zones_cnt = (await db.execute(select(HabitatZone).where(HabitatZone.project_id == proj_id))).scalars().all()
+            corr_cnt = (await db.execute(select(Corridor).where(Corridor.project_id == proj_id))).scalars().all()
+            pz_cnt = (await db.execute(select(PriorityZone).where(PriorityZone.project_id == proj_id))).scalars().all()
             print(f"    [DONE] Zones: {len(zones_cnt):,} | Corridors: {len(corr_cnt)} | Priority Zones: {len(pz_cnt)}")
 
     print("\n" + "=" * 70)
