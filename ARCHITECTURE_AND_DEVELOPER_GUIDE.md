@@ -503,3 +503,11 @@ WildLink AI includes root and frontend Vercel deployment manifests:
 | **Post-Response Freeze** | Serverless runtimes freeze background threads once HTTP response is emitted | In serverless environments (`VERCEL` / `AWS_LAMBDA_FUNCTION_NAME`), analysis runs synchronously in **1.2s - 3.8s** before HTTP response completion. |
 | **Bundle Size < 500MB** | Heavy C/GDAL binaries (`rasterio`, `fiona`, `geopandas`) exceeded 623MB | Trimmed dependencies to pure Python GIS equivalents (`shapely`, `networkx`, `scipy`, `scikit-learn`), reducing package bundle to ~110MB. |
 | **Instant Cold Boot** | Heavy computation during app initialization causes timeouts | Pre-seeded database bundled in `backend/wildlink.db` with non-blocking cold-start startup routines. |
+| **Stateless Polling Glitches** | Polling job IDs across ephemeral serverless instances returned 404s | `trigger_analysis` returns `status="completed"` synchronously; `get_job_status` and frontend `pollJobStatus` implement auto-recovery fallback to project layer metrics. |
+
+### 10.2 Serverless Job Status Resiliency & Auto-Recovery Flow
+1. **Synchronous Analysis Dispatch**:
+   - `POST /api/v1/analysis/run` finishes execution in ~2s on Vercel and returns `status="completed"`, `progress=100`, eliminating the requirement for post-run polling across ephemeral lambdas.
+2. **Multi-Instance Auto-Recovery**:
+   - `GET /api/v1/analysis/jobs/{job_id}` returns a completed status envelope if queried on a stateless instance.
+   - Frontend `handleRunAnalysis` checks `getDashboard(projectId)` to instantly recover and display active GIS models if a network glitch occurs.
