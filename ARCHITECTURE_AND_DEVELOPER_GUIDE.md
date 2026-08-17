@@ -511,3 +511,8 @@ WildLink AI includes root and frontend Vercel deployment manifests:
 2. **Multi-Instance Auto-Recovery**:
    - `GET /api/v1/analysis/jobs/{job_id}` returns a completed status envelope if queried on a stateless instance.
    - Frontend `handleRunAnalysis` checks `getDashboard(projectId)` to instantly recover and display active GIS models if a network glitch occurs.
+
+### 10.3 Deterministic UUID5 Strategy for Cross-Deployment Stability
+- **Problem**: Vercel redeployments create fresh serverless instances. If the bundled `wildlink.db` is re-seeded, random `uuid4()` IDs for species and projects change. Users with stale project IDs bookmarked or cached in `window.location.hash` receive 404 errors.
+- **Solution**: `_deterministic_id(namespace_label)` in `backend/app/main.py` uses `uuid.uuid5(WILDLINK_NS, label)` with a fixed namespace UUID. Species IDs are derived from `species:{scientific_name}` and project IDs from `project:{scientific_name}`, ensuring identical UUIDs across all cold starts and redeployments.
+- **Frontend Resilience**: `checkUrlHash()` in `App.jsx` auto-recovers from stale project hashes by reloading the projects list and selecting the first available project. `handleRunAnalysis` detects 404 responses from stale project IDs and transparently re-resolves the correct project for the selected species before retrying.
