@@ -105,6 +105,13 @@ async def health_check():
     }
 
 
+def _deterministic_id(namespace_label: str) -> str:
+    """Generate a deterministic UUID5 from a label, stable across redeployments."""
+    import uuid
+    WILDLINK_NS = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+    return str(uuid.uuid5(WILDLINK_NS, namespace_label))
+
+
 async def _seed_demo_data():
     """Seed the database with comprehensive species across categories and sample observations."""
     from app.database import AsyncSessionLocal
@@ -265,6 +272,7 @@ async def _seed_demo_data():
             existing_sp = res.scalar_one_or_none()
 
             if not existing_sp:
+                sp_data["id"] = _deterministic_id(f"species:{sp_data['scientific_name']}")
                 existing_sp = Species(**sp_data)
                 db.add(existing_sp)
                 await db.flush()
@@ -315,6 +323,7 @@ async def _seed_demo_data():
                 proj = res_proj.scalar_one_or_none()
                 if not proj:
                     proj = Project(
+                        id=_deterministic_id(f"project:{sp.scientific_name}"),
                         name=f"{sp.common_name} Corridor & Habitat Prioritization",
                         description=f"Automated landscape connectivity modeling and priority ranking for {sp.common_name} across {sp_data.get('region_name', 'Study Region')}.",
                         region_name=sp_data.get("region_name", "Study Region"),

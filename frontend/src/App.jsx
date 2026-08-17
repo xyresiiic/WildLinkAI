@@ -126,10 +126,36 @@ function App() {
           setAnalysisStatus('completed');
           await loadAnalysisResultsForProject(proj.id);
           addToast(`Restored project: ${proj.name}`, 'success');
+          return;
         }
       } catch (e) {
-        console.warn('Could not load project from hash:', e);
+        console.warn('Stale project ID in URL hash, recovering...', e);
         window.location.hash = '';
+        // Auto-recover: load fresh project list and select the first available
+        try {
+          const projRes = await getProjects();
+          const freshProjects = projRes.data.data || [];
+          setProjectsList(freshProjects);
+          if (freshProjects.length > 0) {
+            const firstProj = freshProjects[0];
+            const fullRes = await getProject(firstProj.id);
+            const proj = fullRes.data.data;
+            if (proj) {
+              setProject(proj);
+              if (proj.species) setSelectedSpecies(proj.species);
+              window.location.hash = proj.id;
+              const dashRes = await getDashboard(proj.id).catch(() => ({ data: { data: null } }));
+              setDashboard(dashRes.data.data);
+              if (proj.status === 'completed' || dashRes.data.data?.total_corridors > 0) {
+                setAnalysisStatus('completed');
+                await loadAnalysisResultsForProject(proj.id);
+              }
+              addToast(`Auto-loaded: ${proj.name}`, 'success');
+            }
+          }
+        } catch (recoverErr) {
+          console.warn('Auto-recovery failed:', recoverErr);
+        }
       }
     }
   };
@@ -316,7 +342,46 @@ function App() {
       }
     } catch (err) {
       console.error('Analysis execution error:', err);
-      // Auto-recovery: verify if project data is available in the database
+
+      // Detect stale project ID (404 = project not found on redeployed backend)
+      const is404 = err?.response?.status === 404;
+
+      if (is404 && selectedSpecies) {
+        // Auto-recover: find a fresh project for this species
+        try {
+          addToast('Reconnecting to updated backend...', 'info', 2000);
+          const projRes = await getProjects();
+          const freshProjects = projRes.data.data || [];
+          setProjectsList(freshProjects);
+          const match = freshProjects.find(p => p.species_id === selectedSpecies.id)
+                     || freshProjects.find(p => p.name?.includes(selectedSpecies.common_name));
+          if (match) {
+            const fullRes = await getProject(match.id);
+            const freshProj = fullRes.data.data;
+            if (freshProj) {
+              setProject(freshProj);
+              window.location.hash = freshProj.id;
+              // Re-run analysis with the correct project ID
+              const reRunRes = await runAnalysis({ project_id: freshProj.id, type: 'full' });
+              const job = reRunRes?.data?.data;
+              if (job?.status === 'completed' || !job?.id) {
+                setAnalysisProgress(100);
+                setAnalysisStatus('completed');
+                addToast('Analysis complete! Rendering results...', 'success');
+                await loadAnalysisResultsForProject(freshProj.id);
+                const dashRes = await getDashboard(freshProj.id).catch(() => ({ data: { data: null } }));
+                setDashboard(dashRes.data.data);
+                loadProjects();
+                return;
+              }
+            }
+          }
+        } catch (recoverErr) {
+          console.warn('Stale project auto-recovery failed:', recoverErr);
+        }
+      }
+
+      // Fallback: verify if project data is already available in the database
       try {
         const dash = await getDashboard(project.id);
         if (dash.data.data?.total_corridors > 0 || dash.data.data?.total_habitat_patches > 0) {
